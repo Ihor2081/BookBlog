@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import Index, func
 from datetime import datetime
 from ..core.database import Base
-
+from sqlalchemy import JSON 
 
 # Зв'язок багато-до-багатьох для тегів
 post_tags = Table(
@@ -38,7 +38,8 @@ class Post(Base):
     
     author_id = Column(Integer, ForeignKey("users.id"),nullable=False)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
-    
+   
+    tags = Column(JSON, default=[])
     # likes_count = Column(Integer, default=0, nullable=False)
     # read_time = Column(Integer, nullable=True)  # хвилини або секунди
 

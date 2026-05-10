@@ -6,9 +6,10 @@ from ..core.database import get_db
 from ..core.security import verify_admin
 from ..repositories.admin_repo import AdminRepository
 from ..schemas.admin import CategoryCreate, PostStatusUpdate
+from ..models.models import User
 # Додамо схему для статистики, щоб Swagger розумів структуру відповіді
 from ..schemas.user_dashboard import UserStats 
-from ..schemas.post import PostResponse
+from ..schemas.post import PostCreate, PostResponse
 
 router = APIRouter(
     prefix="/api/admin",
@@ -28,6 +29,37 @@ async def admin_list_all_posts(db: AsyncSession = Depends(get_db)):
     repo = AdminRepository(db)
     # Важливо: у репозиторії має бути selectinload(Post.author)
     return await repo.get_all_posts_managed()
+
+@router.post(
+    "/posts",
+    response_model=PostResponse,
+    status_code=status.HTTP_201_CREATED
+)
+async def admin_create_post(
+    post_data: PostCreate,
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(verify_admin)
+):
+    repo = AdminRepository(db)
+    
+    slug = (
+        post_data.slug
+        if post_data.slug
+        else post_data.title.lower().replace(" ", "-")
+    )
+
+    post = await repo.create_post(
+        title=post_data.title,
+        content=post_data.content,
+        category_id=post_data.category_id,
+        tags=post_data.tags,
+        cover_image=post_data.cover_image,
+        status=post_data.status,
+        slug=slug,
+        author_id=admin_user.id,
+    )
+
+    return post
 
 @router.patch("/posts/{post_id}/status")
 async def admin_change_post_status(

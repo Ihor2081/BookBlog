@@ -57,6 +57,47 @@ class AdminRepository:
         )
 
         return result.scalars().all()
+    
+    async def create_post(
+         self,
+         title: str,
+         content: str,
+         category_id: int,
+         tags: list[str],
+         cover_image: str | None,
+         status: str,
+         slug: str,
+         author_id: int,
+    ):
+        new_post = Post(
+           title=title,
+           content=content,
+           category_id=category_id,
+           tags=tags,
+           cover_image=cover_image,
+           status=status,
+           slug=slug,
+           author_id=author_id,
+        )
+
+    # # Додаємо категорії
+    #     if category_id:
+    #        categories_result = await self.db.execute(
+    #          select(Category).where(Category.id.in_(category_id))
+    #        )
+
+    #        categories = categories_result.scalars().all()
+
+    #        new_post.categories = categories
+
+        self.db.add(new_post)
+
+        await self.db.commit()
+
+        await self.db.refresh(new_post)
+
+        return new_post
+
 
     async def update_post_status(
         self,
