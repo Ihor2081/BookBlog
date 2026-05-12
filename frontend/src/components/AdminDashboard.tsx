@@ -30,6 +30,7 @@ interface Post {
   status: "draft" | "published";
   views: number;
   created_at: string;
+  cover_image?: string;
   author?: {
     username: string;
   };
@@ -43,9 +44,18 @@ interface Stats {
   draft_posts: number;
 }
 
+interface Category {
+  id: number;
+  name: string;
+}
+
 export function AdminDashboard({
   onBack,
 }: AdminDashboardProps) {
+
+  // =========================================
+  // STATE
+  // =========================================
 
   const [stats, setStats] = useState<Stats | null>(null);
 
@@ -56,6 +66,13 @@ export function AdminDashboard({
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const [creatingPost, setCreatingPost] = useState(false);
+
+  const [categories] = useState<Category[]>([
+    { id: 1, name: "Fiction" },
+    { id: 2, name: "Non-Fiction" },
+    { id: 3, name: "Technology" },
+    { id: 4, name: "Science" },
+  ]);
 
   const [newPost, setNewPost] = useState({
     title: "",
@@ -100,15 +117,36 @@ export function AdminDashboard({
 
   const handleCreatePost = async () => {
     try {
+
+      if (!newPost.title.trim()) {
+        alert("Title is required");
+        return;
+      }
+
+      if (!newPost.content.trim()) {
+        alert("Content is required");
+        return;
+      }
+
       setCreatingPost(true);
 
-      await api.post("/admin/posts", {
-        ...newPost,
+      const payload = {
+        title: newPost.title,
+        content: newPost.content,
+        category_id: Number(newPost.category_id),
+        cover_image: newPost.cover_image,
+        status: newPost.status,
         tags: newPost.tags
           .split(",")
           .map((tag) => tag.trim())
           .filter(Boolean),
-      });
+      };
+
+      console.log("POST PAYLOAD:", payload);
+
+      await api.post("/admin/posts", payload);
+
+      alert("Post created successfully");
 
       setShowCreateModal(false);
 
@@ -123,8 +161,18 @@ export function AdminDashboard({
 
       await fetchAdminData();
 
-    } catch (error) {
-      console.error("Create post error:", error);
+    } catch (error: any) {
+
+      console.error(
+        "Create post error:",
+        error?.response?.data || error
+      );
+
+      alert(
+        error?.response?.data?.detail ||
+        "Failed to create post"
+      );
+
     } finally {
       setCreatingPost(false);
     }
@@ -135,6 +183,7 @@ export function AdminDashboard({
   // =========================================
 
   const handleDeletePost = async (postId: number) => {
+
     const confirmed = window.confirm(
       "Delete this post?"
     );
@@ -142,6 +191,7 @@ export function AdminDashboard({
     if (!confirmed) return;
 
     try {
+
       await api.delete(`/admin/posts/${postId}`);
 
       setPosts((prev) =>
@@ -168,6 +218,7 @@ export function AdminDashboard({
         : "published";
 
     try {
+
       await api.patch(
         `/admin/posts/${postId}/status`,
         {
@@ -213,6 +264,7 @@ export function AdminDashboard({
       <aside className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col">
 
         <div className="p-6 border-b border-gray-200">
+
           <div className="flex items-center gap-2">
 
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white font-bold">
@@ -224,6 +276,7 @@ export function AdminDashboard({
             </span>
 
           </div>
+
         </div>
 
         <nav className="flex-1 p-4 space-y-2">
@@ -244,6 +297,7 @@ export function AdminDashboard({
           </button>
 
         </nav>
+
       </aside>
 
       {/* MAIN */}
@@ -265,6 +319,7 @@ export function AdminDashboard({
           <div className="flex items-center justify-between mb-8">
 
             <div>
+
               <h1 className="text-3xl font-bold text-gray-900">
                 Admin Dashboard
               </h1>
@@ -272,6 +327,7 @@ export function AdminDashboard({
               <p className="text-gray-600">
                 Manage blog platform content
               </p>
+
             </div>
 
             <button
@@ -287,42 +343,55 @@ export function AdminDashboard({
           {/* STATS */}
 
           {stats && (
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
 
               <div className="bg-white rounded-xl p-6 border">
+
                 <p className="text-sm text-gray-500">
                   Total Posts
                 </p>
+
                 <p className="text-3xl font-bold">
                   {stats.total_posts}
                 </p>
+
               </div>
 
               <div className="bg-white rounded-xl p-6 border">
+
                 <p className="text-sm text-gray-500">
                   Total Users
                 </p>
+
                 <p className="text-3xl font-bold">
                   {stats.total_users}
                 </p>
+
               </div>
 
               <div className="bg-white rounded-xl p-6 border">
+
                 <p className="text-sm text-gray-500">
                   Total Views
                 </p>
+
                 <p className="text-3xl font-bold">
                   {stats.total_views}
                 </p>
+
               </div>
 
               <div className="bg-white rounded-xl p-6 border">
+
                 <p className="text-sm text-gray-500">
                   Published Posts
                 </p>
+
                 <p className="text-3xl font-bold">
                   {stats.published_posts}
                 </p>
+
               </div>
 
             </div>
@@ -333,9 +402,11 @@ export function AdminDashboard({
           <div className="bg-white rounded-xl border overflow-hidden">
 
             <div className="p-6 border-b">
+
               <h2 className="text-xl font-bold">
                 Posts Management
               </h2>
+
             </div>
 
             <div className="overflow-x-auto">
@@ -347,7 +418,7 @@ export function AdminDashboard({
                   <tr>
 
                     <th className="px-6 py-4 text-left">
-                      Title
+                      Post
                     </th>
 
                     <th className="px-6 py-4 text-left">
@@ -380,19 +451,35 @@ export function AdminDashboard({
                     >
 
                       <td className="px-6 py-4">
-                        <div>
-                          <p className="font-medium">
-                            {post.title}
-                          </p>
 
-                          <p className="text-sm text-gray-500">
-                            {post.slug}
-                          </p>
+                        <div className="flex items-center gap-4">
+
+                          {post.cover_image && (
+                            <img
+                              src={post.cover_image}
+                              alt={post.title}
+                              className="w-16 h-16 rounded-lg object-cover"
+                            />
+                          )}
+
+                          <div>
+
+                            <p className="font-medium text-gray-900">
+                              {post.title}
+                            </p>
+
+                            <p className="text-sm text-gray-500">
+                              {post.slug}
+                            </p>
+
+                          </div>
+
                         </div>
+
                       </td>
 
                       <td className="px-6 py-4">
-                        {post.author?.username}
+                        {post.author?.username || "Admin"}
                       </td>
 
                       <td className="px-6 py-4">
@@ -458,7 +545,9 @@ export function AdminDashboard({
             </div>
 
           </div>
+
         </div>
+
       </main>
 
       {/* CREATE POST MODAL */}
@@ -467,7 +556,7 @@ export function AdminDashboard({
 
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
 
-          <div className="bg-white rounded-2xl w-full max-w-2xl p-6">
+          <div className="bg-white rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
 
             <div className="flex items-center justify-between mb-6">
 
@@ -485,6 +574,8 @@ export function AdminDashboard({
 
             <div className="space-y-4">
 
+              {/* TITLE */}
+
               <input
                 type="text"
                 placeholder="Post title"
@@ -497,6 +588,8 @@ export function AdminDashboard({
                 }
                 className="w-full border rounded-lg px-4 py-3"
               />
+
+              {/* CONTENT */}
 
               <textarea
                 placeholder="Post content"
@@ -511,6 +604,61 @@ export function AdminDashboard({
                 className="w-full border rounded-lg px-4 py-3"
               />
 
+              {/* CATEGORY */}
+
+              <select
+                value={newPost.category_id}
+                onChange={(e) =>
+                  setNewPost({
+                    ...newPost,
+                    category_id: Number(e.target.value),
+                  })
+                }
+                className="w-full border rounded-lg px-4 py-3"
+              >
+
+                {categories.map((category) => (
+
+                  <option
+                    key={category.id}
+                    value={category.id}
+                  >
+                    {category.name}
+                  </option>
+
+                ))}
+
+              </select>
+
+              {/* COVER IMAGE */}
+
+              <input
+                type="text"
+                placeholder="Cover image URL"
+                value={newPost.cover_image}
+                onChange={(e) =>
+                  setNewPost({
+                    ...newPost,
+                    cover_image: e.target.value,
+                  })
+                }
+                className="w-full border rounded-lg px-4 py-3"
+              />
+
+              {/* IMAGE PREVIEW */}
+
+              {newPost.cover_image && (
+
+                <img
+                  src={newPost.cover_image}
+                  alt="Preview"
+                  className="w-full h-56 object-cover rounded-xl border"
+                />
+
+              )}
+
+              {/* TAGS */}
+
               <input
                 type="text"
                 placeholder="Tags separated by commas"
@@ -524,6 +672,8 @@ export function AdminDashboard({
                 className="w-full border rounded-lg px-4 py-3"
               />
 
+              {/* STATUS */}
+
               <select
                 value={newPost.status}
                 onChange={(e) =>
@@ -534,6 +684,7 @@ export function AdminDashboard({
                 }
                 className="w-full border rounded-lg px-4 py-3"
               >
+
                 <option value="draft">
                   Draft
                 </option>
@@ -544,14 +695,18 @@ export function AdminDashboard({
 
               </select>
 
+              {/* CREATE BUTTON */}
+
               <button
                 onClick={handleCreatePost}
                 disabled={creatingPost}
-                className="w-full py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                className="w-full py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
+
                 {creatingPost
                   ? "Creating..."
                   : "Create Post"}
+
               </button>
 
             </div>
@@ -560,6 +715,7 @@ export function AdminDashboard({
 
         </div>
       )}
+
     </div>
   );
 }
