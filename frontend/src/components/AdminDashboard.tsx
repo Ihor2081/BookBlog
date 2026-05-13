@@ -688,13 +688,17 @@ export function AdminDashboard({
 
               {/* IMAGE PREVIEW */}
 
-              {newPost.cover_image && (
-
-                <img
-                  src={newPost.cover_image}
-                  alt="Preview"
-                  className="w-full h-56 object-cover rounded-xl border"
-                />
+              {newPost.cover_image &&
+                 (newPost.cover_image.startsWith("http") ||
+                   newPost.cover_image.startsWith("data:image")) && (
+                    <img
+                      src={newPost.cover_image}
+                      alt="Preview"
+                      className="w-full h-56 object-cover rounded-xl border"
+                      onError={(e) => {
+                         e.currentTarget.style.display = "none";
+                      }}
+                    />
 
               )}
 
