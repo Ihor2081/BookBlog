@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from typing import List
 
 from ..core.database import get_db
@@ -17,7 +18,7 @@ from ..schemas.post import (
     PostResponse,
 )
 
-from ..models.models import User
+from ..models.models import User, Category
 
 from ..services.post_logic import PostService
 
@@ -116,6 +117,17 @@ async def admin_create_post(
     # =====================================
     # CREATE POST
     # =====================================
+    category_exists = await db.scalar(
+        select(Category).where(
+           Category.id == post_data.category_id
+        )
+    )
+
+    if not category_exists:
+       raise HTTPException(
+         status_code=400,
+         detail="Category does not exist"
+       )
 
     post = await repo.create_post(
         title=post_data.title,
