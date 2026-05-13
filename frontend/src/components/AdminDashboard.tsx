@@ -116,10 +116,13 @@ export function AdminDashboard({
   // =========================================
 
   const handleCreatePost = async () => {
-    try {
-
       if (!newPost.title.trim()) {
         alert("Title is required");
+        return;
+      }
+      
+      if (newPost.title.trim().length < 3) {
+        alert("Title must contain at least 3 characters");
         return;
       }
 
@@ -127,56 +130,79 @@ export function AdminDashboard({
         alert("Content is required");
         return;
       }
+      
+      if (newPost.content.trim().length < 10) {
+        alert("Content must contain at least 10 characters");
+        return;
+      }
 
-      setCreatingPost(true);
+      try {
+        setCreatingPost(true);
 
-      const payload = {
-        title: newPost.title,
-        content: newPost.content,
-        category_id: Number(newPost.category_id),
-        cover_image: newPost.cover_image,
-        status: newPost.status,
-        tags: newPost.tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
-      };
+        const payload = {
+          title: newPost.title.trim(),
+          content: newPost.content.trim(),
+          category_id: Number(newPost.category_id),
+          tags: newPost.tags
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean),
+          cover_image: newPost.cover_image || null,
+          status: newPost.status,
+        };
 
-      console.log("POST PAYLOAD:", payload);
+        console.log("POST PAYLOAD:", payload);
 
-      await api.post("/admin/posts", payload);
+        await api.post("/admin/posts", payload);
 
-      alert("Post created successfully");
+        setShowCreateModal(false);
 
-      setShowCreateModal(false);
+        setNewPost({
+          title: "",
+          content: "",
+          category_id: 1,
+          tags: "",
+          cover_image: "",
+          status: "draft",
+        });
 
-      setNewPost({
-        title: "",
-        content: "",
-        category_id: 1,
-        tags: "",
-        cover_image: "",
-        status: "draft",
-      });
+        await fetchAdminData();
 
-      await fetchAdminData();
+      } catch (error: any) {
+        console.error("FULL ERROR:", error);
 
-    } catch (error: any) {
+        if (error.response) {
+          console.error(
+            "BACKEND RESPONSE:",
+            error.response.data
+          );
 
-      console.error(
-        "Create post error:",
-        error?.response?.data || error
-      );
+          alert(
+            error.response.data?.detail?.[0]?.msg ||
+            "Failed to create post"
+          );
+        }
 
-      alert(
-        error?.response?.data?.detail ||
-        "Failed to create post"
-      );
+      } finally {
+        setCreatingPost(false);
+      }
+  };  
+    // } catch (error: any) {
 
-    } finally {
-      setCreatingPost(false);
-    }
-  };
+    //   console.error(
+    //     "Create post error:",
+    //     error?.response?.data || error
+    //   );
+
+    //   alert(
+    //     error?.response?.data?.detail ||
+    //     "Failed to create post"
+    //   );
+
+    // } finally {
+    //   setCreatingPost(false);
+    // }
+ 
 
   // =========================================
   // DELETE POST
