@@ -249,8 +249,9 @@ class AdminRepository:
 
             return new_category
 
-        except IntegrityError:
+        except IntegrityError as e:
+           await self.db.rollback()
 
-            await self.db.rollback()
+           print("CREATE POST ERROR:", str(e))
 
-            return None
+           raise e
