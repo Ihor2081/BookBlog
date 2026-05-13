@@ -67,7 +67,7 @@ class AdminRepository:
             .order_by(Post.created_at.desc())
         )
 
-        return result.scalars().all()
+        return result.scalars().unique().all()
 
     async def create_post(
         self,
@@ -79,12 +79,42 @@ class AdminRepository:
         status: str,
         slug: str,
         author_id: int,
-        read_time: str = "1 min read",
+        read_time: str,
     ):
 
+        # =====================================
+        # CHECK CATEGORY
+        # =====================================
+
+        if category_id is not None:
+
+            category = await self.db.scalar(
+                select(Category).where(
+                    Category.id == category_id
+                )
+            )
+
+            if not category:
+                return None
+
+        # =====================================
+        # CHECK SLUG
+        # =====================================
+
+        existing_slug = await self.db.scalar(
+            select(Post).where(Post.slug == slug)
+        )
+
+        if existing_slug:
+            return None
+
+        # =====================================
+        # CREATE POST
+        # =====================================
+
         new_post = Post(
-            title=title,
-            content=content,
+            title=title.strip(),
+            content=content.strip(),
             category_id=category_id,
             cover_image=cover_image,
             status=status,
@@ -93,9 +123,9 @@ class AdminRepository:
             read_time=read_time,
         )
 
-        # =========================
+        # =====================================
         # TAGS
-        # =========================
+        # =====================================
 
         tag_objects = []
 
@@ -103,14 +133,21 @@ class AdminRepository:
 
             clean_tag = tag_name.strip().lower()
 
+            if not clean_tag:
+                continue
+
             existing_tag = await self.db.scalar(
-                select(Tag).where(Tag.name == clean_tag)
+                select(Tag).where(
+                    Tag.name == clean_tag
+                )
             )
 
             if existing_tag:
+
                 tag_objects.append(existing_tag)
 
             else:
+
                 new_tag = Tag(name=clean_tag)
 
                 self.db.add(new_tag)
@@ -121,18 +158,28 @@ class AdminRepository:
 
         new_post.tags = tag_objects
 
-        # =========================
+        # =====================================
         # SAVE
-        # =========================
+        # =====================================
 
         try:
+
             self.db.add(new_post)
 
             await self.db.commit()
 
-            await self.db.refresh(new_post)
+            # reload relations
+            result = await self.db.execute(
+                select(Post)
+                .options(
+                    selectinload(Post.author),
+                    selectinload(Post.category),
+                    selectinload(Post.tags),
+                )
+                .where(Post.id == new_post.id)
+            )
 
-            return new_post
+            return result.scalar_one()
 
         except IntegrityError:
 
@@ -145,9 +192,6 @@ class AdminRepository:
         post_id: int,
         status: str,
     ) -> bool:
-
-        if status not in ["draft", "published"]:
-            return False
 
         query = (
             update(Post)
@@ -166,7 +210,9 @@ class AdminRepository:
         post_id: int,
     ) -> bool:
 
-        query = delete(Post).where(Post.id == post_id)
+        query = delete(Post).where(
+            Post.id == post_id
+        )
 
         result = await self.db.execute(query)
 
