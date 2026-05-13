@@ -67,17 +67,18 @@ export function AdminDashboard({
 
   const [creatingPost, setCreatingPost] = useState(false);
 
-  const [categories] = useState<Category[]>([
-    { id: 1, name: "Fiction" },
-    { id: 2, name: "Non-Fiction" },
-    { id: 3, name: "Technology" },
-    { id: 4, name: "Science" },
-  ]);
+  // const [categories] = useState<Category[]>([
+  //   { id: 1, name: "Fiction" },
+  //   { id: 2, name: "Non-Fiction" },
+  //   { id: 3, name: "Technology" },
+  //   { id: 4, name: "Science" },
+  // ]);
+  const [categories, setCategories] = useState<any[]>([]);
 
   const [newPost, setNewPost] = useState({
     title: "",
     content: "",
-    category_id: 1,
+    category_id: 0,
     tags: "",
     cover_image: "",
     status: "draft",
@@ -91,14 +92,28 @@ export function AdminDashboard({
     try {
       setLoading(true);
 
-      const [statsRes, postsRes] = await Promise.all([
-        api.get("/admin/stats"),
-        api.get("/admin/posts"),
+      // const [statsRes, postsRes] = await Promise.all([
+      //   api.get("/admin/stats"),
+      //   api.get("/admin/posts"),
+      // ]);
+      const [statsRes, postsRes, categoriesRes] = await Promise.all([
+         api.get("/admin/stats"),
+         api.get("/admin/posts"),
+         api.get("/categories"),
       ]);
 
       setStats(statsRes.data);
 
       setPosts(postsRes.data);
+      
+      setCategories(categoriesRes.data);
+
+      if (categoriesRes.data.length > 0) {
+        setNewPost((prev) => ({
+          ...prev,
+          category_id: categoriesRes.data[0].id,
+        }));
+      }     
 
     } catch (error) {
       console.error("Admin dashboard error:", error);
