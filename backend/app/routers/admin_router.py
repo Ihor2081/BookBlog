@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-from slugify import slugify
 
 from ..core.database import get_db
 from ..core.security import verify_admin
@@ -19,6 +18,8 @@ from ..schemas.post import (
 )
 
 from ..models.models import User
+
+from ..services.post_logic import PostService
 
 
 router = APIRouter(
@@ -72,25 +73,49 @@ async def admin_create_post(
 
     repo = AdminRepository(db)
 
-    # =========================
-    # SLUG GENERATION
-    # =========================
+    # =====================================
+    # VALIDATION
+    # =====================================
 
-    slug = slugify(post_data.title)
+    if not PostService.validate_title(
+        post_data.title
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid title",
+        )
 
-    # =========================
-    # READING TIME
-    # =========================
+    if not PostService.validate_content(
+        post_data.content
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Content must contain at least 10 characters",
+        )
 
-    word_count = len(post_data.content.split())
+    if not PostService.validate_status(
+        post_data.status
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid status",
+        )
 
-    minutes = max(1, word_count // 200)
+    # =====================================
+    # GENERATION
+    # =====================================
 
-    read_time = f"{minutes} min read"
+    slug = PostService.create_slug(
+        post_data.title
+    )
 
-    # =========================
+    read_time = PostService.calculate_read_time(
+        post_data.content
+    )
+
+    # =====================================
     # CREATE POST
-    # =========================
+    # =====================================
 
     post = await repo.create_post(
         title=post_data.title,
@@ -106,8 +131,8 @@ async def admin_create_post(
 
     if not post:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Не вдалося створити пост",
+            status_code=400,
+            detail="Failed to create post",
         )
 
     return post
@@ -129,19 +154,16 @@ async def admin_change_post_status(
 
     if not updated:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Пост не знайдено",
+            status_code=404,
+            detail="Post not found",
         )
 
     return {
-        "message": f"Статус змінено на {data.status}"
+        "message": f"Status changed to {data.status}"
     }
 
 
-@router.delete(
-    "/posts/{post_id}",
-    status_code=status.HTTP_200_OK,
-)
+@router.delete("/posts/{post_id}")
 async def admin_delete_post(
     post_id: int,
     db: AsyncSession = Depends(get_db),
@@ -149,16 +171,18 @@ async def admin_delete_post(
 
     repo = AdminRepository(db)
 
-    deleted = await repo.delete_post_any(post_id)
+    deleted = await repo.delete_post_any(
+        post_id
+    )
 
     if not deleted:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Пост не знайдено",
+            status_code=404,
+            detail="Post not found",
         )
 
     return {
-        "message": "Пост видалено адміном"
+        "message": "Post deleted"
     }
 
 
@@ -177,12 +201,14 @@ async def admin_add_category(
 
     repo = AdminRepository(db)
 
-    category = await repo.create_category(cat.name)
+    category = await repo.create_category(
+        cat.name
+    )
 
     if not category:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Категорія вже існує",
+            status_code=400,
+            detail="Category already exists",
         )
 
     return category
