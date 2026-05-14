@@ -15,6 +15,7 @@ from ..schemas.admin import (
 
 from ..schemas.post import (
     PostCreate,
+    PostUpdate,
     PostResponse,
 )
 
