@@ -7,7 +7,10 @@ from ..models.models import (
     Post,
     User,
     Category,
+    Comment,
+    Like,
     Tag,
+    post_tags,
 )
 
 
@@ -209,17 +212,45 @@ class AdminRepository:
         self,
         post_id: int,
     ) -> bool:
+        
+        try:
 
-        query = delete(Post).where(
-            Post.id == post_id
-        )
+           # delete comments
+            await self.db.execute(
+               delete(Comment)
+              .where(Comment.post_id == post_id)
+            )
 
-        result = await self.db.execute(query)
+           # delete likes
+            await self.db.execute(
+               delete(Like)
+               .where(Like.post_id == post_id)
+            )
 
-        await self.db.commit()
+           # delete post_tags relation
+            await self.db.execute(
+               delete(post_tags)
+              .where(post_tags.c.post_id == post_id)
+            )
 
-        return result.rowcount > 0
+           # delete post
+            result = await self.db.execute(
+               delete(Post)
+               .where(Post.id == post_id)
+            )
 
+         
+            await self.db.commit()
+
+            return result.rowcount > 0
+        
+        except Exception as e:
+
+           await self.db.rollback()
+
+           print("DELETE ERROR:", e)
+
+           return False
     # =====================================
     # CATEGORY MANAGEMENT
     # =====================================
