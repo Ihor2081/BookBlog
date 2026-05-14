@@ -174,6 +174,30 @@ async def admin_change_post_status(
         "message": f"Status changed to {data.status}"
     }
 
+@router.put(
+    "/posts/{post_id}",
+    response_model=PostResponse,
+)
+async def admin_update_post(
+    post_id: int,
+    post_data: PostUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+
+    repo = AdminRepository(db)
+
+    updated_post = await repo.update_post(
+        post_id,
+        post_data,
+    )
+
+    if not updated_post:
+        raise HTTPException(
+            status_code=404,
+            detail="Post not found",
+        )
+
+    return updated_post
 
 @router.delete("/posts/{post_id}")
 async def admin_delete_post(
