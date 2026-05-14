@@ -83,6 +83,10 @@ export function AdminDashboard({
     cover_image: "",
     status: "draft",
   });
+  
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // =========================================
   // FETCH ADMIN DATA
@@ -548,7 +552,13 @@ export function AdminDashboard({
 
                         <div className="flex justify-end gap-2">
 
-                          <button className="p-2 rounded-lg hover:bg-blue-50 text-gray-600 hover:text-blue-600">
+                          <button
+                             onClick={() => {
+                               setEditingPost(post);
+                               setShowEditModal(true);
+                             }}
+                             className="p-2 rounded-lg hover:bg-blue-50 text-gray-600 hover:text-blue-600"
+                          >
                             <Edit className="h-4 w-4" />
                           </button>
 
