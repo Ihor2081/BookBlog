@@ -190,6 +190,33 @@ class AdminRepository:
 
             return None
 
+    async def update_post(
+       self,
+       post_id: int,
+       data,
+    ):
+
+       post = await self.db.get(
+          Post,
+          post_id,
+       )
+
+       if not post:
+         return None
+
+       update_data = data.model_dump(
+          exclude_unset=True
+       )
+
+       for field, value in update_data.items():
+          setattr(post, field, value)
+
+       await self.db.commit()
+
+       await self.db.refresh(post)
+
+       return post
+
     async def update_post_status(
         self,
         post_id: int,
