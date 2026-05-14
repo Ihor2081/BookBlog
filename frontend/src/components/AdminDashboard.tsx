@@ -211,7 +211,31 @@ export function AdminDashboard({
     //   setCreatingPost(false);
     // }
  
+  const handleUpdatePost = async () => {
 
+    if (!editingPost) return;
+
+    try {
+
+      await api.put(
+        `/admin/posts/${editingPost.id}`,
+        editingPost
+      );
+
+      setShowEditModal(false);
+
+      setEditingPost(null);
+
+      await fetchAdminData();
+
+    } catch (error) {
+
+      console.error(
+        "Update post error:",
+        error
+      );
+    }
+  };
   // =========================================
   // DELETE POST
   // =========================================
