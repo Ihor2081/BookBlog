@@ -87,6 +87,10 @@ export function AdminDashboard({
   const [editingPost, setEditingPost] = useState<Post | null>(null);
 
   const [showEditModal, setShowEditModal] = useState(false);
+  
+  const [activeTab, setActiveTab] = useState<
+     "overview" | "posts" | "users"
+  >("overview");
 
   // =========================================
   // FETCH ADMIN DATA
@@ -339,9 +343,16 @@ export function AdminDashboard({
 
         <nav className="flex-1 p-4 space-y-2">
 
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-blue-50 text-blue-600 font-medium">
-            <TrendingUp className="h-4 w-4" />
-            Overview
+          <button
+             onClick={() => setActiveTab("overview")}
+             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors font-medium ${
+               activeTab === "overview" 
+                 ? "bg-blue-50 text-blue-600" 
+                 : "text-slate-600 hover:bg-slate-50"
+             }`}
+          >
+             <TrendingUp className="h-4 w-4" />
+             Overview
           </button>
 
           <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100">
