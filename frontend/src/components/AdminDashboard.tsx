@@ -24,9 +24,11 @@ interface AdminDashboardProps {
 }
 
 interface User {
-  id: number;       // або string, якщо у вас UUID
+  id: number;      
   username: string;
-  email: string;    // додайте інші поля, які є в базі, якщо вони потрібні
+  email: string;
+  is_admin: boolean;
+  created_at: string;  // додайте інші поля, які є в базі, якщо вони потрібні
 }
 
 interface Post {
@@ -49,8 +51,6 @@ interface Stats {
   published_posts: number;
   draft_posts: number;
 }
-
-
 
 interface Category {
   id: number;
@@ -491,13 +491,76 @@ export function AdminDashboard({
             </div>
           )}
           
+
+          
+          {/* USERS TABLE */}
           {activeTab === "users" && (
-            <div>
-              {users.map((user) => (
-                <div key={user.id}>
-                  {user.username}
-                </div>
-              ))}
+            <div className="bg-white rounded-xl border overflow-hidden">
+               <div className="p-6 border-b">
+                 <h2 className="text-xl font-bold">Users Management</h2>
+               </div>
+
+               <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          ID
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Username
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Email
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                           Role
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                           Joined Date
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody className="divide-y divide-gray-200">
+                      {users.map((user) => (
+                        <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            #{user.id}
+                          </td>
+              
+                          <td className="px-6 py-4 whitespace-nowrap">
+                             <div className="font-medium text-gray-900">{user.username}</div>
+                          </td>
+              
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                             {user.email}
+                          </td>
+              
+                          <td className="px-6 py-4 whitespace-nowrap">
+                             <span
+                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                 user.is_admin
+                                    ? "bg-purple-100 text-purple-800"
+                                    : "bg-gray-100 text-gray-800"
+                               }`}
+                             >
+                               {user.is_admin ? "Admin" : "User"}
+                             </span>
+                          </td>
+              
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                             {new Date(user.created_at).toLocaleDateString("uk-UA", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                             })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+               </div>
             </div>
           )}
 
