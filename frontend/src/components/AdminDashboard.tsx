@@ -23,6 +23,12 @@ interface AdminDashboardProps {
   onNavigate: (page: Page) => void;
 }
 
+interface User {
+  id: number;       // або string, якщо у вас UUID
+  username: string;
+  email: string;    // додайте інші поля, які є в базі, якщо вони потрібні
+}
+
 interface Post {
   id: number;
   title: string;
@@ -43,6 +49,8 @@ interface Stats {
   published_posts: number;
   draft_posts: number;
 }
+
+
 
 interface Category {
   id: number;
@@ -92,6 +100,7 @@ export function AdminDashboard({
      "overview" | "posts" | "users"
   >("overview");
 
+  const [users, setUsers] = useState<User[]>([]);
   // =========================================
   // FETCH ADMIN DATA
   // =========================================
@@ -100,9 +109,10 @@ export function AdminDashboard({
     try {
       setLoading(true);
 
-      const [statsRes, postsRes] = await Promise.all([
+      const [statsRes, postsRes, usersRes] = await Promise.all([
         api.get("/admin/stats"),
         api.get("/admin/posts"),
+        api.get("/admin/users"),
       ]);
       
 
@@ -110,6 +120,7 @@ export function AdminDashboard({
 
       setPosts(postsRes.data);
       
+      setUsers(usersRes.data);
          
 
     } catch (error) {
@@ -477,6 +488,16 @@ export function AdminDashboard({
 
               </div>
 
+            </div>
+          )}
+          
+          {activeTab === "users" && (
+            <div>
+              {users.map((user) => (
+                <div key={user.id}>
+                  {user.username}
+                </div>
+              ))}
             </div>
           )}
 
