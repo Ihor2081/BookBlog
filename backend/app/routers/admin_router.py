@@ -222,7 +222,20 @@ async def admin_delete_post(
         "message": "Post deleted"
     }
 
+#====================================
+#GET USERS
+#========================
 
+@router.get("/users")
+async def admin_get_users(
+    db: AsyncSession = Depends(get_db),
+):
+
+    result = await db.execute(
+        select(User)
+    )
+
+    return result.scalars().all()
 # =========================================
 # CATEGORIES
 # =========================================

@@ -85,7 +85,7 @@ async def get_posts(
 
     for post in posts:
         post.read_time = (
-            PostService.calculate_reading_time(
+            PostService.calculate_read_time(
                 post.content
             )
         )
@@ -127,7 +127,7 @@ async def get_post_by_slug(
     post = await repo.get_by_slug(slug)
 
     post.read_time = (
-        PostService.calculate_reading_time(
+        PostService.calculate_read_time(
             post.content
         )
     )
@@ -269,7 +269,7 @@ async def update_post(
         )
 
     updated_post.read_time = (
-        PostService.calculate_reading_time(
+        PostService.calculate_read_time(
             updated_post.content
         )
     )

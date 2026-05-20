@@ -355,14 +355,28 @@ export function AdminDashboard({
              Overview
           </button>
 
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100">
-            <FileText className="h-4 w-4" />
-            Posts
+          <button
+             onClick={() => setActiveTab("posts")}
+             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors font-medium ${
+                activeTab === "posts" 
+                  ? "bg-blue-50 text-blue-600" 
+                  : "text-slate-600 hover:bg-slate-50"
+             }`}
+          >
+             <FileText className="h-4 w-4" />
+             Posts
           </button>
 
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100">
-            <Users className="h-4 w-4" />
-            Users
+          <button
+             onClick={() => setActiveTab("users")}
+             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors font-medium ${
+                activeTab === "users" 
+                  ? "bg-blue-50 text-blue-600" 
+                  : "text-slate-600 hover:bg-slate-50"
+             }`}
+          >
+             <Users className="h-4 w-4" />
+             Users
           </button>
 
         </nav>
