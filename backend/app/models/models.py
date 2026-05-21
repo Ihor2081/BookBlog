@@ -130,29 +130,34 @@ class Post(Base):
     author = relationship(
         "User",
         back_populates="posts",
+        lazy="selectin",
     )
 
     category = relationship(
         "Category",
         back_populates="posts",
+        lazy="selectin",
     )
 
     tags = relationship(
         "Tag",
         secondary=post_tags,
         back_populates="posts",
+        lazy="selectin",
     )
 
     comments = relationship(
         "Comment",
         back_populates="post",
         cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     likes = relationship(
         "Like",
         back_populates="post",
         cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
 
