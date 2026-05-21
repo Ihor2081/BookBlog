@@ -4,7 +4,6 @@ import {
   Users,
   FileText,
   TrendingUp,
-  Eye,
   Edit,
   Trash2,
   CheckCircle,
@@ -42,6 +41,9 @@ interface Post {
   author?: {
     username: string;
   };
+  content?: string;
+  category_id?: number;
+  tags?: string[] | string;
 }
 
 interface Stats {
@@ -66,15 +68,11 @@ export function AdminDashboard({
   // =========================================
 
   const [stats, setStats] = useState<Stats | null>(null);
-
   const [posts, setPosts] = useState<Post[]>([]);
-
   const [loading, setLoading] = useState(true);
-
   const [showCreateModal, setShowCreateModal] = useState(false);
-
   const [creatingPost, setCreatingPost] = useState(false);
-
+  const [updatingPost, setUpdatingPost] = useState(false);
   const [categories] = useState<Category[]>([
     { id: 1, name: "Fiction" },
     { id: 2, name: "Non-Fiction" },
@@ -82,7 +80,6 @@ export function AdminDashboard({
     { id: 4, name: "Science" },
   ]);
    
-
   const [newPost, setNewPost] = useState({
     title: "",
     content: "",
@@ -225,30 +222,45 @@ export function AdminDashboard({
     // } finally {
     //   setCreatingPost(false);
     // }
- 
+  // =========================================
+  // UPDATE POST
+  // =========================================
+
   const handleUpdatePost = async () => {
 
     if (!editingPost) return;
 
+    if (!editingPost.title.trim()) {
+      alert("Title is required");
+      return;
+    }
+
     try {
+      setUpdatingPost(true);
 
-      await api.put(
-        `/admin/posts/${editingPost.id}`,
-        editingPost
-      );
+      // Якщо теги є рядком (користувач їх редагував в інпуті), перетворюємо в масив
+      const processedTags = typeof editingPost.tags === "string"
+        ? editingPost.tags.split(",").map((t) => t.trim()).filter(Boolean)
+        : editingPost.tags;
 
+      const payload = {
+        title: editingPost.title.trim(),
+        content: editingPost.content?.trim() || "",
+        category_id: Number(editingPost.category_id || 1),
+        tags: processedTags || [],
+        cover_image: editingPost.cover_image || null,
+        status: editingPost.status,
+      };
+
+      await api.put(`/admin/posts/${editingPost.id}`, payload);
       setShowEditModal(false);
-
       setEditingPost(null);
-
       await fetchAdminData();
-
-    } catch (error) {
-
-      console.error(
-        "Update post error:",
-        error
-      );
+    } catch (error: any) {
+      console.error("Update post error:", error);
+      alert(error.response?.data?.detail || "Failed to update post");
+    } finally {
+      setUpdatingPost(false);
     }
   };
   // =========================================
@@ -685,7 +697,7 @@ export function AdminDashboard({
 
                         <div className="flex justify-end gap-2">
 
-                          <button
+                          {/* <button
                              onClick={() => {
                                setEditingPost(post);
                                setShowEditModal(true);
@@ -693,6 +705,17 @@ export function AdminDashboard({
                              className="p-2 rounded-lg hover:bg-blue-50 text-gray-600 hover:text-blue-600"
                           >
                             <Edit className="h-4 w-4" />
+                          </button> */}
+                          <button
+                              onClick={() => {
+                                // Конвертуємо масив тегів у рядок через кому для зручного редагування в інпуті
+                                const tagsString = Array.isArray(post.tags) ? post.tags.join(", ") : "";
+                                setEditingPost({ ...post, tags: tagsString });
+                                setShowEditModal(true);
+                              }}
+                              className="p-2 rounded-lg hover:bg-blue-50 text-gray-600 hover:text-blue-600"
+                          >
+                              <Edit className="h-4 w-4" />
                           </button>
 
                           <button
@@ -892,7 +915,89 @@ export function AdminDashboard({
 
         </div>
       )}
-
+      
+      {/* EDIT POST MODAL */}
+      {showEditModal && editingPost && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Edit Post</h2>
+              <button onClick={() => { setShowEditModal(false); setEditingPost(null); }}>
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input
+                  type="text"
+                  value={editingPost.title}
+                  onChange={(e) => setEditingPost({ ...editingPost, title: e.target.value })}
+                  className="w-full border rounded-lg px-4 py-3"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+                <textarea
+                  rows={8}
+                  value={editingPost.content || ""}
+                  onChange={(e) => setEditingPost({ ...editingPost, content: e.target.value })}
+                  className="w-full border rounded-lg px-4 py-3"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select
+                  value={editingPost.category_id || 1}
+                  onChange={(e) => setEditingPost({ ...editingPost, category_id: Number(e.target.value) })}
+                  className="w-full border rounded-lg px-4 py-3"
+                >
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>{category.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image URL</label>
+                <input
+                  type="text"
+                  value={editingPost.cover_image || ""}
+                  onChange={(e) => setEditingPost({ ...editingPost, cover_image: e.target.value })}
+                  className="w-full border rounded-lg px-4 py-3"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tags (separated by commas)</label>
+                <input
+                  type="text"
+                  value={typeof editingPost.tags === "string" ? editingPost.tags : ""}
+                  onChange={(e) => setEditingPost({ ...editingPost, tags: e.target.value })}
+                  className="w-full border rounded-lg px-4 py-3"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={editingPost.status}
+                  onChange={(e) => setEditingPost({ ...editingPost, status: e.target.value as "draft" | "published" })}
+                  className="w-full border rounded-lg px-4 py-3"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                </select>
+              </div>
+              <button
+                onClick={handleUpdatePost}
+                disabled={updatingPost}
+                className="w-full py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium"
+              >
+                {updatingPost ? "Saving Changes..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
     </div>
   );
 }
