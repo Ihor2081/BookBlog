@@ -504,19 +504,19 @@ export function AdminDashboard({
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          ID
+                        <th className="px-6 py-4 text-left">
+                          ID  
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left">
                           Username
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left">
                           Email
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left">
                            Role
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left">
                            Joined Date
                         </th>
                       </tr>
