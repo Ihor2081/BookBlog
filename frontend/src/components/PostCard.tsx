@@ -1,20 +1,35 @@
-import { Heart, Eye, Clock } from "lucide-react";
+import {
+  Heart,
+  Eye,
+  Clock,
+} from "lucide-react";
 
 interface PostCardProps {
   variant?: "featured" | "standard" | "compact";
+
   title: string;
+
   excerpt: string;
+
   author: {
     name: string;
     avatar: string;
   };
+
   date: string;
+
   readTime: string;
+
   views: number;
+
   likes: number;
+
   category: string;
+
   categoryColor: string;
+
   coverImage: string;
+
   tags?: string[];
 }
 
@@ -30,8 +45,13 @@ export function PostCard({
   category,
   categoryColor,
   coverImage,
-  tags = []
+  tags = [],
 }: PostCardProps) {
+  const safeExcerpt =
+    excerpt.length > 140
+      ? excerpt.slice(0, 140) + "..."
+      : excerpt;
+
   if (variant === "featured") {
     return (
       <article className="group relative overflow-hidden rounded-2xl bg-card shadow-lg hover:shadow-xl transition-all duration-300">
@@ -45,7 +65,9 @@ export function PostCard({
           </div>
 
           <div className="flex flex-col justify-center p-8 md:p-12">
-            <span className={`inline-flex w-fit px-3 py-1 text-xs font-medium rounded-full mb-4 ${categoryColor}`}>
+            <span
+              className={`inline-flex w-fit px-3 py-1 text-xs font-medium rounded-full mb-4 ${categoryColor}`}
+            >
               {category}
             </span>
 
@@ -54,7 +76,7 @@ export function PostCard({
             </h2>
 
             <p className="text-gray-500 text-base leading-relaxed mb-6 line-clamp-3">
-              {excerpt}
+              {safeExcerpt}
             </p>
 
             <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
@@ -64,12 +86,19 @@ export function PostCard({
                   alt={author.name}
                   className="h-10 w-10 rounded-full object-cover"
                 />
+
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{author.name}</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {author.name}
+                  </p>
+
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     <span>{date}</span>
+
                     <span>•</span>
+
                     <Clock className="h-3 w-3" />
+
                     <span>{readTime}</span>
                   </div>
                 </div>
@@ -78,10 +107,13 @@ export function PostCard({
               <div className="ml-auto flex items-center gap-4 text-sm text-gray-500">
                 <span className="flex items-center gap-1">
                   <Eye className="h-4 w-4" />
+
                   {views}
                 </span>
+
                 <span className="flex items-center gap-1">
                   <Heart className="h-4 w-4" />
+
                   {likes}
                 </span>
               </div>
@@ -103,7 +135,9 @@ export function PostCard({
       </div>
 
       <div className="p-6">
-        <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full mb-3 ${categoryColor}`}>
+        <span
+          className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full mb-3 ${categoryColor}`}
+        >
           {category}
         </span>
 
@@ -112,7 +146,7 @@ export function PostCard({
         </h3>
 
         <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-2">
-          {excerpt}
+          {safeExcerpt}
         </p>
 
         <div className="flex items-center gap-3 mb-4">
@@ -121,11 +155,17 @@ export function PostCard({
             alt={author.name}
             className="h-8 w-8 rounded-full object-cover"
           />
+
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">{author.name}</p>
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {author.name}
+            </p>
+
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <span>{date}</span>
+
               <span>•</span>
+
               <span>{readTime}</span>
             </div>
           </div>
@@ -135,21 +175,29 @@ export function PostCard({
           <div className="flex items-center gap-3 text-sm text-gray-500">
             <span className="flex items-center gap-1">
               <Eye className="h-4 w-4" />
+
               {views}
             </span>
+
             <span className="flex items-center gap-1">
               <Heart className="h-4 w-4" />
+
               {likes}
             </span>
           </div>
 
           {tags.length > 0 && (
-            <div className="flex gap-1">
-              {tags.slice(0, 2).map((tag, index) => (
-                <span key={index} className="px-2 py-0.5 text-xs text-gray-600 bg-gray-100 rounded">
-                  {tag}
-                </span>
-              ))}
+            <div className="flex gap-1 flex-wrap">
+              {tags
+                .slice(0, 2)
+                .map((tag, index) => (
+                  <span
+                    key={index}
+                    className="px-2 py-0.5 text-xs text-gray-600 bg-gray-100 rounded"
+                  >
+                    #{tag}
+                  </span>
+                ))}
             </div>
           )}
         </div>
