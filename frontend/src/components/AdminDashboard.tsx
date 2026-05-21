@@ -4,6 +4,7 @@ import {
   Users,
   FileText,
   TrendingUp,
+  Eye,
   Edit,
   Trash2,
   CheckCircle,
