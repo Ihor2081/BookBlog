@@ -1,11 +1,20 @@
+# КЕШ ТА СИСТЕМНІ ФАЙЛИ PYTHON
 **/__pycache__/
 *.pyc
 .pytest_cache/
-/backend/.env
+
+# ВІРТУАЛЬНЕ ОТОЧЕННЯ ТА ЛОКАЛЬНІ ЗАВАНТАЖЕННЯ
 /backend/.venv/
 /backend/static/uploads/
+
+# КРИТИЧНО ВАЖЛИВО: ХОВАЄМО СЕКРЕТИ (ФАЙЛИ З ПАРОЛЯМИ)
+/backend/.env
+.env
+**/.env
+*.env
+# ЗАЛЕЖНОСТІ ТА ЗБІРКА ФРОНТЕНДУ
 node_modules/
-frontend/.next/
 frontend/node_modules/
-backend/.env.example
+frontend/.next/
+frontend/dist/
 

@@ -12,13 +12,26 @@
 
 # settings = Settings()
 
-import os
-from pydantic_settings import BaseSettings
+from pathlib import Path
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Динамічно визначаємо шлях до .env, який лежить у цій же папці (backend/app/core/)
+CURRENT_DIR = Path(__file__).resolve().parent
+ENV_FILE_PATH = CURRENT_DIR / ".env"
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "mysql+aiomysql://root:@localhost:3306/bookblog_db"
-    SECRET_KEY: str = "YOUR_SUPER_SECRET_KEY_123"
-    ALGORITHM: str = "HS256"
+    # Очікуємо, що ці змінні будуть знайдені в .env або в системі
+    DATABASE_URL: str
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"  # Якщо в .env немає значення, візьметься це за замовчуванням
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 години
 
+    # Налаштування для Pydantic: читати саме наш файл .env
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILE_PATH, 
+        env_file_encoding="utf-8",
+        extra="ignore"  # ігнорувати сторонні змінні, якщо вони є в системі
+    )
+
+# Екземпляр конфігу для використання в усьому проєкті
 settings = Settings()
