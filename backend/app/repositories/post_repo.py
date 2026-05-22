@@ -125,7 +125,7 @@ class PostRepository:
     # =====================================
     # GET POST BY ID
     # =====================================
-    async def get_post_by_id(
+    async def get_by_id(
         self,
         post_id: int,
     ):
@@ -259,7 +259,7 @@ class PostRepository:
 
             await self.db.commit()
 
-            return await self.get_post_by_id(
+            return await self.get_by_id(
                 new_post.id
             )
 
@@ -369,7 +369,7 @@ class PostRepository:
         try:
             await self.db.commit()
 
-            return await self.get_post_by_id(
+            return await self.get_by_id(
                 post.id
             )
 
