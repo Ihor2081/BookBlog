@@ -1,3 +1,5 @@
+from typing import List, Optional
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -8,12 +10,13 @@ from fastapi import (
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from typing import List, Optional
-
 from ..core.database import get_db
 from ..core.security import get_current_user
 
-from ..models.models import User
+from ..models.models import (
+    User,
+    Post,
+)
 
 from ..repositories.post_repo import PostRepository
 
@@ -37,33 +40,28 @@ router = APIRouter(
 # =====================================
 @router.get(
     "/",
-    response_model=List[PostResponse]
+    response_model=List[PostResponse],
 )
 async def get_posts(
     skip: int = 0,
     limit: int = 10,
-
     category_id: Optional[int] = None,
-
     tag: Optional[str] = None,
-
     search: Optional[str] = None,
-
     sort_by: str = Query(
         default="recent",
         enum=[
             "recent",
             "popular-views",
             "popular-likes",
-        ]
+        ],
     ),
-
     db: AsyncSession = Depends(get_db),
 ):
     """
     Get all published posts
-    with pagination, filtering,
-    searching and sorting.
+    with filtering, search,
+    sorting and pagination.
     """
 
     repo = PostRepository(db)
@@ -71,15 +69,10 @@ async def get_posts(
     posts = await repo.get_posts(
         skip=skip,
         limit=limit,
-
         category_id=category_id,
-
         tag=tag,
-
         search=search,
-
         sort_by=sort_by,
-
         status="published",
     )
 
@@ -96,18 +89,60 @@ async def get_posts(
 
 
 # =====================================
+# GET POST BY ID
+# =====================================
+@router.get(
+    "/{post_id}",
+    response_model=PostResponse,
+)
+async def get_post_by_id(
+    post_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get post by ID.
+    """
+
+    repo = PostRepository(db)
+
+    post = await repo.get_by_id(post_id)
+
+    if not post:
+        raise HTTPException(
+            status_code=404,
+            detail="Post not found",
+        )
+
+    # increment views
+    await repo.increment_views(post.id)
+
+    # reload updated post
+    post = await repo.get_by_id(post_id)
+
+    post.read_time = (
+        PostService.calculate_read_time(
+            post.content
+        )
+    )
+
+    post.likes_count = len(post.likes)
+
+    return post
+
+
+# =====================================
 # GET POST BY SLUG
 # =====================================
 @router.get(
-    "/{slug}",
-    response_model=PostResponse
+    "/slug/{slug}",
+    response_model=PostResponse,
 )
 async def get_post_by_slug(
     slug: str,
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Get post by SEO slug.
+    Get post by slug.
     """
 
     repo = PostRepository(db)
@@ -119,12 +154,6 @@ async def get_post_by_slug(
             status_code=404,
             detail="Post not found",
         )
-
-    # increment views
-    await repo.increment_views(post.id)
-
-    # refresh updated views
-    post = await repo.get_by_slug(slug)
 
     post.read_time = (
         PostService.calculate_read_time(
@@ -147,9 +176,7 @@ async def get_post_by_slug(
 )
 async def create_post(
     post_data: PostCreate,
-
     db: AsyncSession = Depends(get_db),
-
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -169,19 +196,12 @@ async def create_post(
 
     post = await repo.create_post(
         title=validated["title"],
-
         slug=validated["slug"],
-
         content=validated["content"],
-
         author_id=current_user.id,
-
         category_id=post_data.category_id,
-
         cover_image=post_data.cover_image,
-
         status=validated["status"],
-
         tags=validated["tags"],
     )
 
@@ -197,35 +217,21 @@ async def create_post(
 # =====================================
 @router.put(
     "/{post_id}",
-    response_model=PostResponse
+    response_model=PostResponse,
 )
 async def update_post(
     post_id: int,
-
     post_data: PostUpdate,
-
     db: AsyncSession = Depends(get_db),
-
     current_user: User = Depends(get_current_user),
 ):
     """
-    Update own post.
+    Update existing post.
     """
 
     repo = PostRepository(db)
 
-    existing_post = await db.get(
-        type(repo).__dict__["__annotations__"].get("Post", object),
-        post_id
-    )
-
-    existing_post = await db.get(
-        __import__(
-            "app.models.models",
-            fromlist=["Post"]
-        ).Post,
-        post_id,
-    )
+    existing_post = await repo.get_by_id(post_id)
 
     if not existing_post:
         raise HTTPException(
@@ -249,7 +255,7 @@ async def update_post(
         )
     )
 
-    # slug regeneration
+    # regenerate slug
     if "title" in update_data:
         update_data["slug"] = (
             PostService.generate_slug(
@@ -258,8 +264,8 @@ async def update_post(
         )
 
     updated_post = await repo.update_post(
-        post_id,
-        update_data,
+        post_id=post_id,
+        data=update_data,
     )
 
     if not updated_post:
@@ -290,24 +296,16 @@ async def update_post(
 )
 async def delete_post(
     post_id: int,
-
     db: AsyncSession = Depends(get_db),
-
     current_user: User = Depends(get_current_user),
 ):
     """
-    Delete own post.
+    Delete post.
     """
 
     repo = PostRepository(db)
 
-    existing_post = await db.get(
-        __import__(
-            "app.models.models",
-            fromlist=["Post"]
-        ).Post,
-        post_id,
-    )
+    existing_post = await repo.get_by_id(post_id)
 
     if not existing_post:
         raise HTTPException(
@@ -315,7 +313,7 @@ async def delete_post(
             detail="Post not found",
         )
 
-    # author/admin protection
+    # only author or admin
     if (
         existing_post.author_id != current_user.id
         and not current_user.is_admin
@@ -336,7 +334,7 @@ async def delete_post(
         )
 
     return {
-        "message": "Post deleted successfully"
+        "message": "Post deleted successfully",
     }
 
 
@@ -352,5 +350,6 @@ async def like_post(
     """
 
     return {
-        "status": "success"
+        "status": "success",
+        "post_id": post_id,
     }
