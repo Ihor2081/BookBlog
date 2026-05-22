@@ -132,7 +132,7 @@ export function CommentSection({
         }
 
         const response = await api.post(
-          `/comments/post/${postId}/guest`,
+          `/comments/post/${postId}`,
           {
             content: commentText,
             guest_name: guestName,
