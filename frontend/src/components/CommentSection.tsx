@@ -1,106 +1,210 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Cookies from "js-cookie";
 import { Heart, MoreVertical } from "lucide-react";
+
+import api from "../lib/api";
 
 interface Comment {
   id: number;
-  author: {
-    name: string;
-    avatar: string;
-    isRegistered: boolean;
-  };
   content: string;
-  timestamp: string;
-  likes: number;
-  liked: boolean;
+
+  created_at?: string;
+
+  likes_count?: number;
+
+  user?: {
+    id: number;
+    username: string;
+    avatar?: string | null;
+  };
+
+  guest_name?: string | null;
 }
 
-export function CommentSection() {
-  const [isLoggedIn] = useState(false);
-  const [showGuestForm, setShowGuestForm] = useState(false);
-  const [comments, setComments] = useState<Comment[]>([
-    {
-      id: 1,
-      author: {
-        name: "Michael Chen",
-        avatar: "https://images.unsplash.com/photo-1576558656222-ba66febe3dec?w=200&h=200&fit=crop",
-        isRegistered: true
-      },
-      content: "This is exactly what I needed to read today. I've been struggling with maintaining focus while reading, and these strategies are really practical. Going to try the 15-minute sessions starting tomorrow!",
-      timestamp: "2 hours ago",
-      likes: 12,
-      liked: false
-    },
-    {
-      id: 2,
-      author: {
-        name: "Emma Wilson",
-        avatar: "https://images.unsplash.com/photo-1655249481446-25d575f1c054?w=200&h=200&fit=crop",
-        isRegistered: true
-      },
-      content: "Great article! I'd also add that choosing the right book matters. Starting with something engaging rather than difficult helps build the habit.",
-      timestamp: "5 hours ago",
-      likes: 8,
-      liked: false
-    },
-    {
-      id: 3,
-      author: {
-        name: "Anonymous Reader",
-        avatar: "",
-        isRegistered: false
-      },
-      content: "As someone who used to read 50+ books a year and now struggles to finish even one, this really resonates. The part about building stamina gradually is key.",
-      timestamp: "1 day ago",
-      likes: 15,
-      liked: false
-    }
-  ]);
+interface CommentSectionProps {
+  postId: number;
+}
+
+export function CommentSection({
+  postId,
+}: CommentSectionProps) {
+  const [comments, setComments] = useState<Comment[]>([]);
+
+  const [isLoading, setIsLoading] = useState(true);
 
   const [commentText, setCommentText] = useState("");
+
   const [guestName, setGuestName] = useState("");
+
   const [guestEmail, setGuestEmail] = useState("");
 
-  const handleLikeComment = (commentId: number) => {
-    setComments(comments.map(comment => {
-      if (comment.id === commentId) {
-        return {
-          ...comment,
-          liked: !comment.liked,
-          likes: comment.liked ? comment.likes - 1 : comment.likes + 1
-        };
+  const [showGuestForm, setShowGuestForm] = useState(false);
+
+  const token = Cookies.get("access_token");
+
+  const isLoggedIn = Boolean(token);
+
+  // =========================================
+  // FETCH COMMENTS
+  // =========================================
+  useEffect(() => {
+    const fetchComments = async () => {
+      try {
+        setIsLoading(true);
+
+        const response = await api.get(
+          `/comments/post/${postId}`
+        );
+
+        setComments(response.data);
+      } catch (error) {
+        console.error(
+          "Comments loading error:",
+          error
+        );
+      } finally {
+        setIsLoading(false);
       }
-      return comment;
-    }));
+    };
+
+    fetchComments();
+  }, [postId]);
+
+  // =========================================
+  // FORMAT DATE
+  // =========================================
+  const formatDate = (dateString?: string) => {
+    if (!dateString) {
+      return "Recently";
+    }
+
+    return new Date(dateString).toLocaleString();
   };
 
-  const handleSubmitComment = (e: React.FormEvent) => {
+  // =========================================
+  // SUBMIT COMMENT
+  // =========================================
+  const handleSubmitComment = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
 
-    if (!commentText.trim()) return;
-
-    if (!isLoggedIn && (!guestName.trim() || !guestEmail.trim())) {
-      alert("Please fill in your name and email");
+    if (!commentText.trim()) {
       return;
     }
 
-    const newComment: Comment = {
-      id: comments.length + 1,
-      author: {
-        name: isLoggedIn ? "Current User" : guestName,
-        avatar: isLoggedIn ? "https://images.unsplash.com/photo-1762522926157-bcc04bf0b10a?w=200&h=200&fit=crop" : "",
-        isRegistered: isLoggedIn
-      },
-      content: commentText,
-      timestamp: "Just now",
-      likes: 0,
-      liked: false
-    };
+    try {
+      // =====================================
+      // AUTHORIZED USER COMMENT
+      // =====================================
+      if (isLoggedIn) {
+        const response = await api.post(
+          `/comments/post/${postId}`,
+          {
+            content: commentText,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-    setComments([newComment, ...comments]);
-    setCommentText("");
-    setGuestName("");
-    setGuestEmail("");
-    setShowGuestForm(false);
+        setComments((prev) => [
+          response.data,
+          ...prev,
+        ]);
+      }
+
+      // =====================================
+      // GUEST COMMENT
+      // =====================================
+      else {
+        if (
+          !guestName.trim() ||
+          !guestEmail.trim()
+        ) {
+          alert(
+            "Please enter your name and email"
+          );
+
+          return;
+        }
+
+        const response = await api.post(
+          `/comments/post/${postId}/guest`,
+          {
+            content: commentText,
+            guest_name: guestName,
+            guest_email: guestEmail,
+          }
+        );
+
+        setComments((prev) => [
+          response.data,
+          ...prev,
+        ]);
+      }
+
+      // =====================================
+      // RESET FORM
+      // =====================================
+      setCommentText("");
+
+      setGuestName("");
+
+      setGuestEmail("");
+
+      setShowGuestForm(false);
+    } catch (error: any) {
+      console.error(
+        "Comment creation error:",
+        error
+      );
+
+      alert(
+        error?.response?.data?.detail ||
+          "Failed to add comment"
+      );
+    }
+  };
+
+  // =========================================
+  // LIKE COMMENT
+  // =========================================
+  const handleLikeComment = async (
+    commentId: number
+  ) => {
+    try {
+      await api.post(
+        `/comments/${commentId}/like`,
+        {},
+        token
+          ? {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          : undefined
+      );
+
+      setComments((prev) =>
+        prev.map((comment) =>
+          comment.id === commentId
+            ? {
+                ...comment,
+                likes_count:
+                  (comment.likes_count || 0) + 1,
+              }
+            : comment
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Like comment error:",
+        error
+      );
+    }
   };
 
   return (
@@ -109,90 +213,109 @@ export function CommentSection() {
         Comments ({comments.length})
       </h3>
 
-      <div className="mb-8">
+      {/* ===================================== */}
+      {/* COMMENT FORM */}
+      {/* ===================================== */}
+
+      <div className="mb-10">
         {isLoggedIn ? (
-          <form onSubmit={handleSubmitComment} className="space-y-4">
-            <div className="flex gap-3">
-              <img
-                src="https://images.unsplash.com/photo-1762522926157-bcc04bf0b10a?w=200&h=200&fit=crop"
-                alt="Your avatar"
-                className="h-10 w-10 rounded-full object-cover"
-              />
-              <div className="flex-1">
-                <textarea
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Share your thoughts..."
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  rows={3}
-                />
-              </div>
-            </div>
+          <form
+            onSubmit={handleSubmitComment}
+            className="space-y-4"
+          >
+            <textarea
+              value={commentText}
+              onChange={(e) =>
+                setCommentText(e.target.value)
+              }
+              placeholder="Write your comment..."
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={4}
+              required
+            />
+
             <div className="flex justify-end">
               <button
                 type="submit"
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Post Comment
               </button>
             </div>
           </form>
         ) : (
-          <div className="bg-gray-50 rounded-lg p-6">
+          <div className="bg-gray-50 rounded-2xl p-6">
             {!showGuestForm ? (
               <div className="text-center">
-                <p className="text-gray-600 mb-4">Join the conversation</p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                    Sign In to Comment
-                  </button>
-                  <button
-                    onClick={() => setShowGuestForm(true)}
-                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-white transition-colors font-medium"
-                  >
-                    Comment as Guest
-                  </button>
-                </div>
+                <p className="text-gray-600 mb-4">
+                  Join the discussion
+                </p>
+
+                <button
+                  onClick={() =>
+                    setShowGuestForm(true)
+                  }
+                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-white transition-colors"
+                >
+                  Comment as Guest
+                </button>
               </div>
             ) : (
-              <form onSubmit={handleSubmitComment} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <form
+                onSubmit={handleSubmitComment}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input
                     type="text"
-                    value={guestName}
-                    onChange={(e) => setGuestName(e.target.value)}
                     placeholder="Your name"
+                    value={guestName}
+                    onChange={(e) =>
+                      setGuestName(e.target.value)
+                    }
                     className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
+
                   <input
                     type="email"
+                    placeholder="Your email"
                     value={guestEmail}
-                    onChange={(e) => setGuestEmail(e.target.value)}
-                    placeholder="Your email (won't be published)"
+                    onChange={(e) =>
+                      setGuestEmail(
+                        e.target.value
+                      )
+                    }
                     className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>
+
                 <textarea
                   value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Share your thoughts..."
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  rows={3}
+                  onChange={(e) =>
+                    setCommentText(e.target.value)
+                  }
+                  placeholder="Write your comment..."
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={4}
                   required
                 />
+
                 <div className="flex justify-end gap-3">
                   <button
                     type="button"
-                    onClick={() => setShowGuestForm(false)}
-                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-white transition-colors"
+                    onClick={() =>
+                      setShowGuestForm(false)
+                    }
+                    className="px-5 py-2 border border-gray-300 rounded-lg hover:bg-white transition-colors"
                   >
                     Cancel
                   </button>
+
                   <button
                     type="submit"
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     Post Comment
                   </button>
@@ -203,67 +326,112 @@ export function CommentSection() {
         )}
       </div>
 
-      <div className="space-y-6">
-        {comments.map((comment) => (
-          <div key={comment.id} className="flex gap-4">
-            {comment.author.avatar ? (
-              <img
-                src={comment.author.avatar}
-                alt={comment.author.name}
-                className="h-10 w-10 rounded-full object-cover flex-shrink-0"
-              />
-            ) : (
-              <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
-                <span className="text-gray-600 font-medium text-sm">
-                  {comment.author.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
+      {/* ===================================== */}
+      {/* COMMENTS LIST */}
+      {/* ===================================== */}
 
-            <div className="flex-1">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900">
-                      {comment.author.name}
+      {isLoading ? (
+        <div className="text-gray-500">
+          Loading comments...
+        </div>
+      ) : comments.length === 0 ? (
+        <div className="text-gray-500">
+          No comments yet.
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {comments.map((comment) => {
+            const authorName =
+              comment.user?.username ||
+              comment.guest_name ||
+              "Anonymous";
+
+            const avatar =
+              comment.user?.avatar;
+
+            return (
+              <div
+                key={comment.id}
+                className="flex gap-4"
+              >
+                {/* AVATAR */}
+
+                {avatar ? (
+                  <img
+                    src={avatar}
+                    alt={authorName}
+                    className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-medium text-gray-700">
+                      {authorName
+                        .charAt(0)
+                        .toUpperCase()}
                     </span>
-                    {!comment.author.isRegistered && (
-                      <span className="px-2 py-0.5 text-xs bg-gray-200 text-gray-600 rounded">
-                        Guest
-                      </span>
-                    )}
                   </div>
-                  <span className="text-sm text-gray-500">{comment.timestamp}</span>
+                )}
+
+                {/* CONTENT */}
+
+                <div className="flex-1">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900">
+                          {authorName}
+                        </span>
+
+                        {!comment.user && (
+                          <span className="px-2 py-0.5 text-xs bg-gray-200 text-gray-600 rounded">
+                            Guest
+                          </span>
+                        )}
+                      </div>
+
+                      <span className="text-sm text-gray-500">
+                        {formatDate(
+                          comment.created_at
+                        )}
+                      </span>
+                    </div>
+
+                    <button className="text-gray-400 hover:text-gray-600">
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <p className="text-gray-700 leading-relaxed mb-3 whitespace-pre-wrap">
+                    {comment.content}
+                  </p>
+
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() =>
+                        handleLikeComment(
+                          comment.id
+                        )
+                      }
+                      className="flex items-center gap-1 text-sm text-gray-500 hover:text-red-500 transition-colors"
+                    >
+                      <Heart className="h-4 w-4" />
+
+                      {(comment.likes_count ||
+                        0) > 0 && (
+                        <span>
+                          {
+                            comment.likes_count
+                          }
+                        </span>
+                      )}
+                    </button>
+                  </div>
                 </div>
-                <button className="text-gray-400 hover:text-gray-600">
-                  <MoreVertical className="h-4 w-4" />
-                </button>
               </div>
-
-              <p className="text-gray-700 leading-relaxed mb-3">
-                {comment.content}
-              </p>
-
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => handleLikeComment(comment.id)}
-                  className={`flex items-center gap-1 text-sm transition-colors ${
-                    comment.liked
-                      ? "text-red-500"
-                      : "text-gray-500 hover:text-red-500"
-                  }`}
-                >
-                  <Heart className={`h-4 w-4 ${comment.liked ? "fill-current" : ""}`} />
-                  {comment.likes > 0 && <span>{comment.likes}</span>}
-                </button>
-                <button className="text-sm text-gray-500 hover:text-blue-600 transition-colors">
-                  Reply
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
