@@ -91,7 +91,7 @@ export function PostDetail({
       try {
         setIsLoading(true);
 
-        const response = await api.get(`/posts/${postId}`);
+        const response = await api.get(`/posts/id/${postId}`);
 
         const postData = response.data;
 

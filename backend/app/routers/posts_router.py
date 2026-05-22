@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 from fastapi import (
     APIRouter,
     Depends,
@@ -10,13 +8,12 @@ from fastapi import (
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from typing import List, Optional
+
 from ..core.database import get_db
 from ..core.security import get_current_user
 
-from ..models.models import (
-    User,
-    Post,
-)
+from ..models.models import User, Post
 
 from ..repositories.post_repo import PostRepository
 
@@ -40,7 +37,7 @@ router = APIRouter(
 # =====================================
 @router.get(
     "/",
-    response_model=List[PostResponse],
+    response_model=List[PostResponse]
 )
 async def get_posts(
     skip: int = 0,
@@ -54,16 +51,10 @@ async def get_posts(
             "recent",
             "popular-views",
             "popular-likes",
-        ],
+        ]
     ),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Get all published posts
-    with filtering, search,
-    sorting and pagination.
-    """
-
     repo = PostRepository(db)
 
     posts = await repo.get_posts(
@@ -83,8 +74,6 @@ async def get_posts(
             )
         )
 
-        post.likes_count = len(post.likes)
-
     return posts
 
 
@@ -92,17 +81,13 @@ async def get_posts(
 # GET POST BY ID
 # =====================================
 @router.get(
-    "/{post_id}",
-    response_model=PostResponse,
+    "/id/{post_id}",
+    response_model=PostResponse
 )
 async def get_post_by_id(
     post_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Get post by ID.
-    """
-
     repo = PostRepository(db)
 
     post = await repo.get_by_id(post_id)
@@ -113,10 +98,8 @@ async def get_post_by_id(
             detail="Post not found",
         )
 
-    # increment views
     await repo.increment_views(post.id)
 
-    # reload updated post
     post = await repo.get_by_id(post_id)
 
     post.read_time = (
@@ -124,8 +107,6 @@ async def get_post_by_id(
             post.content
         )
     )
-
-    post.likes_count = len(post.likes)
 
     return post
 
@@ -135,16 +116,12 @@ async def get_post_by_id(
 # =====================================
 @router.get(
     "/slug/{slug}",
-    response_model=PostResponse,
+    response_model=PostResponse
 )
 async def get_post_by_slug(
     slug: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Get post by slug.
-    """
-
     repo = PostRepository(db)
 
     post = await repo.get_by_slug(slug)
@@ -155,13 +132,15 @@ async def get_post_by_slug(
             detail="Post not found",
         )
 
+    await repo.increment_views(post.id)
+
+    post = await repo.get_by_slug(slug)
+
     post.read_time = (
         PostService.calculate_read_time(
             post.content
         )
     )
-
-    post.likes_count = len(post.likes)
 
     return post
 
@@ -179,10 +158,6 @@ async def create_post(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Create new post.
-    """
-
     validated = (
         PostService.validate_post_data(
             title=post_data.title,
@@ -207,8 +182,6 @@ async def create_post(
 
     post.read_time = validated["read_time"]
 
-    post.likes_count = 0
-
     return post
 
 
@@ -217,7 +190,7 @@ async def create_post(
 # =====================================
 @router.put(
     "/{post_id}",
-    response_model=PostResponse,
+    response_model=PostResponse
 )
 async def update_post(
     post_id: int,
@@ -225,10 +198,6 @@ async def update_post(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Update existing post.
-    """
-
     repo = PostRepository(db)
 
     existing_post = await repo.get_by_id(post_id)
@@ -239,7 +208,6 @@ async def update_post(
             detail="Post not found",
         )
 
-    # only author or admin
     if (
         existing_post.author_id != current_user.id
         and not current_user.is_admin
@@ -255,7 +223,6 @@ async def update_post(
         )
     )
 
-    # regenerate slug
     if "title" in update_data:
         update_data["slug"] = (
             PostService.generate_slug(
@@ -264,8 +231,8 @@ async def update_post(
         )
 
     updated_post = await repo.update_post(
-        post_id=post_id,
-        data=update_data,
+        post_id,
+        update_data,
     )
 
     if not updated_post:
@@ -278,10 +245,6 @@ async def update_post(
         PostService.calculate_read_time(
             updated_post.content
         )
-    )
-
-    updated_post.likes_count = len(
-        updated_post.likes
     )
 
     return updated_post
@@ -299,10 +262,6 @@ async def delete_post(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Delete post.
-    """
-
     repo = PostRepository(db)
 
     existing_post = await repo.get_by_id(post_id)
@@ -313,7 +272,6 @@ async def delete_post(
             detail="Post not found",
         )
 
-    # only author or admin
     if (
         existing_post.author_id != current_user.id
         and not current_user.is_admin
@@ -334,7 +292,7 @@ async def delete_post(
         )
 
     return {
-        "message": "Post deleted successfully",
+        "message": "Post deleted successfully"
     }
 
 
@@ -345,11 +303,6 @@ async def delete_post(
 async def like_post(
     post_id: int,
 ):
-    """
-    Like system placeholder.
-    """
-
     return {
-        "status": "success",
-        "post_id": post_id,
+        "status": "success"
     }
