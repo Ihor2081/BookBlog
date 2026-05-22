@@ -3,17 +3,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 
-from ..models.models import Post, User, Category
+from ..models.models import (
+    Post,
+    User,
+    Category,
+    Comment,
+    Like,
+    Tag,
+    post_tags,
+)
 
 
 class AdminRepository:
+
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    # =========================
+    # =====================================
     # ANALYTICS
-    # =========================
+    # =====================================
+
     async def get_analytics(self):
+
         total_posts = await self.db.scalar(
             select(func.count(Post.id))
         )
@@ -27,11 +38,13 @@ class AdminRepository:
         )
 
         published_posts = await self.db.scalar(
-            select(func.count(Post.id)).where(Post.status == "published")
+            select(func.count(Post.id))
+            .where(Post.status == "published")
         )
 
         draft_posts = await self.db.scalar(
-            select(func.count(Post.id)).where(Post.status == "draft")
+            select(func.count(Post.id))
+            .where(Post.status == "draft")
         )
 
         return {
@@ -42,62 +55,274 @@ class AdminRepository:
             "draft_posts": draft_posts or 0,
         }
 
-    # =========================
+    # =====================================
     # POSTS MANAGEMENT
-    # =========================
+    # =====================================
+
     async def get_all_posts_managed(self):
+
         result = await self.db.execute(
             select(Post)
             .options(
                 selectinload(Post.author),
-                selectinload(Post.categories),
+                selectinload(Post.category),
                 selectinload(Post.tags),
             )
             .order_by(Post.created_at.desc())
         )
 
-        return result.scalars().all()
-    
+        return result.scalars().unique().all()
+
     async def create_post(
-         self,
-         title: str,
-         content: str,
-         category_id: int,
-         tags: list[str],
-         cover_image: str | None,
-         status: str,
-         slug: str,
-         author_id: int,
+        self,
+        title: str,
+        content: str,
+        category_id: int | None,
+        tags: list[str],
+        cover_image: str | None,
+        status: str,
+        slug: str,
+        author_id: int,
+        read_time: str,
     ):
-        new_post = Post(
-           title=title,
-           content=content,
-           category_id=category_id,
-           tags=tags,
-           cover_image=cover_image,
-           status=status,
-           slug=slug,
-           author_id=author_id,
-        )
 
-    # # Додаємо категорії
-    #     if category_id:
-    #        categories_result = await self.db.execute(
-    #          select(Category).where(Category.id.in_(category_id))
-    #        )
+        try:
 
-    #        categories = categories_result.scalars().all()
+            # =====================================
+            # CHECK CATEGORY
+            # =====================================
 
-    #        new_post.categories = categories
+            if category_id is not None:
 
-        self.db.add(new_post)
+                category = await self.db.scalar(
+                    select(Category)
+                    .where(Category.id == category_id)
+                )
 
-        await self.db.commit()
+                if not category:
+                    return None
 
-        await self.db.refresh(new_post)
+            # =====================================
+            # CHECK SLUG
+            # =====================================
 
-        return new_post
+            existing_slug = await self.db.scalar(
+                select(Post)
+                .where(Post.slug == slug)
+            )
 
+            if existing_slug:
+                return None
+
+            # =====================================
+            # CREATE POST
+            # =====================================
+
+            new_post = Post(
+                title=title.strip(),
+                content=content.strip(),
+                category_id=category_id,
+                cover_image=cover_image,
+                status=status,
+                slug=slug,
+                author_id=author_id,
+                read_time=read_time,
+            )
+
+            # =====================================
+            # TAGS
+            # =====================================
+
+            tag_objects = []
+
+            for tag_name in tags:
+
+                clean_tag = tag_name.strip().lower()
+
+                if not clean_tag:
+                    continue
+
+                existing_tag = await self.db.scalar(
+                    select(Tag)
+                    .where(Tag.name == clean_tag)
+                )
+
+                if existing_tag:
+
+                    tag_objects.append(existing_tag)
+
+                else:
+
+                    new_tag = Tag(name=clean_tag)
+
+                    self.db.add(new_tag)
+
+                    await self.db.flush()
+
+                    tag_objects.append(new_tag)
+
+            new_post.tags = tag_objects
+
+            self.db.add(new_post)
+
+            await self.db.commit()
+
+            # =====================================
+            # RELOAD POST
+            # =====================================
+
+            result = await self.db.execute(
+                select(Post)
+                .options(
+                    selectinload(Post.author),
+                    selectinload(Post.category),
+                    selectinload(Post.tags),
+                )
+                .where(Post.id == new_post.id)
+            )
+
+            return result.scalar_one()
+
+        except IntegrityError:
+
+            await self.db.rollback()
+
+            return None
+
+        except Exception as e:
+
+            await self.db.rollback()
+
+            print("CREATE POST ERROR:", str(e))
+
+            return None
+
+    async def update_post(
+        self,
+        post_id: int,
+        data,
+    ):
+
+        try:
+
+            # =====================================
+            # GET POST WITH RELATIONS
+            # =====================================
+
+            result = await self.db.execute(
+                select(Post)
+                .options(
+                    selectinload(Post.author),
+                    selectinload(Post.category),
+                    selectinload(Post.tags),
+                )
+                .where(Post.id == post_id)
+            )
+
+            post = result.scalar_one_or_none()
+
+            if not post:
+                return None
+
+            # =====================================
+            # UPDATE DATA
+            # =====================================
+
+            update_data = data.model_dump(
+                exclude_unset=True
+            )
+
+            # =====================================
+            # HANDLE TAGS
+            # =====================================
+
+            tags = update_data.pop("tags", None)
+
+            if tags is not None:
+
+                tag_objects = []
+
+                for tag_name in tags:
+
+                    clean_tag = tag_name.strip().lower()
+
+                    if not clean_tag:
+                        continue
+
+                    existing_tag = await self.db.scalar(
+                        select(Tag)
+                        .where(Tag.name == clean_tag)
+                    )
+
+                    if existing_tag:
+
+                        tag_objects.append(existing_tag)
+
+                    else:
+
+                        new_tag = Tag(name=clean_tag)
+
+                        self.db.add(new_tag)
+
+                        await self.db.flush()
+
+                        tag_objects.append(new_tag)
+
+                post.tags = tag_objects
+
+            # =====================================
+            # HANDLE NORMAL FIELDS
+            # =====================================
+
+            allowed_fields = {
+                "title",
+                "content",
+                "cover_image",
+                "status",
+                "slug",
+                "category_id",
+                "read_time",
+            }
+
+            for field, value in update_data.items():
+
+                if field in allowed_fields:
+
+                    setattr(post, field, value)
+
+            await self.db.commit()
+
+            # =====================================
+            # RELOAD POST
+            # =====================================
+
+            result = await self.db.execute(
+                select(Post)
+                .options(
+                    selectinload(Post.author),
+                    selectinload(Post.category),
+                    selectinload(Post.tags),
+                )
+                .where(Post.id == post.id)
+            )
+
+            updated_post = result.scalar_one()
+
+            return updated_post
+
+        except IntegrityError:
+
+            await self.db.rollback()
+
+            return None
+
+        except Exception as e:
+
+            await self.db.rollback()
+
+            print("UPDATE POST ERROR:", str(e))
+
+            return None
 
     async def update_post_status(
         self,
@@ -105,37 +330,79 @@ class AdminRepository:
         status: str,
     ) -> bool:
 
-        if status not in ["draft", "published"]:
+        try:
+
+            query = (
+                update(Post)
+                .where(Post.id == post_id)
+                .values(status=status)
+            )
+
+            result = await self.db.execute(query)
+
+            await self.db.commit()
+
+            return result.rowcount > 0
+
+        except Exception as e:
+
+            await self.db.rollback()
+
+            print("UPDATE STATUS ERROR:", str(e))
+
             return False
 
-        query = (
-            update(Post)
-            .where(Post.id == post_id)
-            .values(status=status)
-        )
+    async def delete_post_any(
+        self,
+        post_id: int,
+    ) -> bool:
 
-        result = await self.db.execute(query)
+        try:
 
-        await self.db.commit()
+            await self.db.execute(
+                delete(Comment)
+                .where(Comment.post_id == post_id)
+            )
 
-        return result.rowcount > 0
+            await self.db.execute(
+                delete(Like)
+                .where(Like.post_id == post_id)
+            )
 
-    async def delete_post_any(self, post_id: int) -> bool:
-        query = delete(Post).where(Post.id == post_id)
+            await self.db.execute(
+                delete(post_tags)
+                .where(post_tags.c.post_id == post_id)
+            )
 
-        result = await self.db.execute(query)
+            result = await self.db.execute(
+                delete(Post)
+                .where(Post.id == post_id)
+            )
 
-        await self.db.commit()
+            await self.db.commit()
 
-        return result.rowcount > 0
+            return result.rowcount > 0
 
-    # =========================
+        except Exception as e:
+
+            await self.db.rollback()
+
+            print("DELETE ERROR:", str(e))
+
+            return False
+
+    # =====================================
     # CATEGORY MANAGEMENT
-    # =========================
-    async def create_category(self, name: str):
+    # =====================================
+
+    async def create_category(
+        self,
+        name: str,
+    ):
 
         existing_category = await self.db.scalar(
-            select(Category).where(Category.name == name)
+            select(Category)
+            .where(Category.name == name)
         )
 
         if existing_category:
@@ -144,6 +411,7 @@ class AdminRepository:
         new_category = Category(name=name)
 
         try:
+
             self.db.add(new_category)
 
             await self.db.commit()
@@ -152,6 +420,10 @@ class AdminRepository:
 
             return new_category
 
-        except IntegrityError:
+        except IntegrityError as e:
+
             await self.db.rollback()
+
+            print("CREATE CATEGORY ERROR:", str(e))
+
             return None

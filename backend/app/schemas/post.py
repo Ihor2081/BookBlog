@@ -1,68 +1,159 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 from typing import List, Optional
 
 
-# =========================
-# BASE
-# =========================
+# =====================================
+# CATEGORY RESPONSE
+# =====================================
+
+class CategoryResponse(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =====================================
+# TAG RESPONSE
+# =====================================
+
+class TagResponse(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =====================================
+# AUTHOR RESPONSE
+# =====================================
+
+class AuthorResponse(BaseModel):
+    id: int
+    username: str
+    email: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =====================================
+# BASE POST
+# =====================================
+
 class PostBase(BaseModel):
-    title: str
-    content: str
+    title: str = Field(..., min_length=3, max_length=255)
 
-    # For MVP keep single category
-    category_id: int
+    content: str = Field(..., min_length=10)
 
-    # Tags list
+    category_id: Optional[int] = None
+
     tags: List[str] = []
 
-    # Draft / published
-    status: str = "draft"
-
-
-# =========================
-# CREATE
-# =========================
-class PostCreate(PostBase):
     cover_image: Optional[str] = None
 
-    # Optional custom slug
+    status: Optional[str] = "draft"
+
+
+# =====================================
+# CREATE POST
+# =====================================
+
+class PostCreate(PostBase):
     slug: Optional[str] = None
 
 
-# =========================
-# UPDATE
-# =========================
+# =====================================
+# UPDATE POST
+# =====================================
+
 class PostUpdate(BaseModel):
-    title: Optional[str] = None
-    content: Optional[str] = None
+    title: Optional[str] = Field(None, min_length=3, max_length=255)
+
+    content: Optional[str] = Field(None, min_length=10)
+
     category_id: Optional[int] = None
+
     tags: Optional[List[str]] = None
-    status: Optional[str] = None
+
     cover_image: Optional[str] = None
 
+    status: Optional[str] = None
 
-# =========================
-# RESPONSE
-# =========================
-class PostResponse(PostBase):
+    slug: Optional[str] = None
+
+
+# =====================================
+# SHORT POST CARD
+# =====================================
+
+class PostCardResponse(BaseModel):
     id: int
+
+    title: str
 
     slug: str
 
-    cover_image: Optional[str]
+    cover_image: Optional[str] = None
 
     views: int
 
-    read_time: str
-
     likes_count: int
+
+    read_time: str
 
     created_at: datetime
 
-    updated_at: Optional[datetime]
+    author: Optional[AuthorResponse] = None
 
-    author_id: int
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
+
+# =====================================
+# FULL POST RESPONSE
+# =====================================
+
+class PostResponse(BaseModel):
+    id: int
+
+    title: str
+
+    slug: str
+
+    content: str
+
+    cover_image: Optional[str] = None
+
+    status: str
+
+    views: int
+
+    likes_count: int
+
+    read_time: str
+
+    created_at: datetime
+
+    updated_at: Optional[datetime] = None
+
+    author: Optional[AuthorResponse] = None
+
+    category: Optional[CategoryResponse] = None
+
+    tags: List[TagResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =====================================
+# PAGINATION RESPONSE
+# =====================================
+
+class PaginatedPostsResponse(BaseModel):
+    total: int
+
+    skip: int
+
+    limit: int
+
+    items: List[PostCardResponse]

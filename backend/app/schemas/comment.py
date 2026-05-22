@@ -5,7 +5,6 @@ from datetime import datetime
 
 class CommentCreate(BaseModel):
     content: str
-    post_id: int
     guest_name: Optional[str] = None
 
 

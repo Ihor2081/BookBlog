@@ -71,7 +71,7 @@ export function Header({
 
               <button
                 onClick={() => onNavigate("register")}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-black font-medium hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
               >
                 Registration
               </button>
@@ -85,7 +85,7 @@ export function Header({
              {userRole === "user" && (
                <button
                 onClick={() => onNavigate("user-dashboard")}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-black font-medium hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
                >
                 User Dashboard
                </button>
@@ -94,7 +94,7 @@ export function Header({
              {userRole === "admin" && (
                <button
                  onClick={() => onNavigate("admin-dashboard")}
-                 className="px-4 py-2 rounded-lg bg-blue-600 text-black font-medium hover:bg-blue-700 transition-colors"
+                 className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
                >
                  Admin Panel
                </button>
