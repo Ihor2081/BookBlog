@@ -36,11 +36,15 @@ app.include_router(comments_router.router)
 
 # 3. Створення таблиць у БД при запуску (тільки для розробки)
 # Примітка: для продакшну краще використовувати міграції Alembic
+# @app.on_event("startup")
+# async def startup():
+#     async with engine.begin() as conn:
+#         # Створює всі таблиці, описані у моделях
+#         await conn.run_sync(Base.metadata.create_all)
+
 @app.on_event("startup")
 async def startup():
-    async with engine.begin() as conn:
-        # Створює всі таблиці, описані у моделях
-        await conn.run_sync(Base.metadata.create_all)
+    print("FastAPI завантажується...")
 
 @app.get("/")
 async def root():
