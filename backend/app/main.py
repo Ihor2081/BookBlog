@@ -1,21 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 # імпорт маршрутизаторів
-from .routers import posts_router, auth_router, admin_router, user_dashboard, comments_router
+from app.routers import posts_router, auth_router, admin_router, user_dashboard, comments_router
 
 # Імпорт бази даних для ініціалізації таблиць (опціонально, якщо не використовуєте Alembic)
-from .core.database import engine, Base
+from app.core.database import engine, Base
 
 app = FastAPI(
     title="Book Blog API",
     description="Backend API для платформи блогів про книги",
     version="1.0.0"
 )
-# 1. Налаштування CORS (щоб фронтенд на Next.js міг робити запити)
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+# # 1. Налаштування CORS (щоб фронтенд на Next.js міг робити запити)
+# origins = [
+#     "http://localhost:5173",
+#     "http://127.0.0.1:5173",
+# ]
 
 
 app.add_middleware(
