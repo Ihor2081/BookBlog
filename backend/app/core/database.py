@@ -13,9 +13,12 @@ engine = create_async_engine(
     settings.DATABASE_URL, 
     echo=True,
     connect_args={
-        "ssl": ssl_context
+        # Спробуємо передати як True (aiomysql сам створить базовий SSL контекст)
+        # Або якщо Aiven дуже прискіпливий, використовуй: "ssl_context": ssl_context
+        "ssl": True 
     }
 )
+
 # engine = create_async_engine(settings.DATABASE_URL, echo=True)
 AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
