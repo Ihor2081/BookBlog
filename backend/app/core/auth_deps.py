@@ -7,11 +7,27 @@ from .database import get_db
 from .config import settings
 from ..models.models import User
 
-# tokenUrl вказує на ендпоінт логіну
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+# Swagger OAuth2 login endpoint
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/auth/swagger-login"
+)
 
-# Схема для опціонального токена (не видає 401, якщо токена немає)
-oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
+# Опціональна авторизація
+oauth2_scheme_optional = OAuth2PasswordBearer(
+    tokenUrl="/api/auth/swagger-login",
+    auto_error=False
+)
+
+
+# # tokenUrl вказує на ендпоінт логіну
+# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+
+# # Схема для опціонального токена (не видає 401, якщо токена немає)
+# oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
+
+# oauth2_scheme = OAuth2PasswordBearer(
+#     tokenUrl="/api/auth/swagger-login"
+# )
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
     """Обов'язкова авторизація (для Dashboard, Admin тощо)"""
