@@ -36,7 +36,7 @@ router = APIRouter(
 # GET ALL POSTS
 # =====================================
 @router.get(
-    "/",
+    "",
     response_model=List[PostResponse]
 )
 async def get_posts(
