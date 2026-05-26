@@ -11,6 +11,10 @@ app = FastAPI(
     description="Backend API для платформи блогів про книги",
     version="1.0.0"
 )
+
+# Додай цей рядок ОДРАЗУ після створення додатка app:
+app.router.redirect_slashes = False
+
 # # 1. Налаштування CORS (щоб фронтенд на Next.js міг робити запити)
 # origins = [
 #     "http://localhost:5173",
