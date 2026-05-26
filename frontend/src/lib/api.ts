@@ -1,13 +1,15 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 
+const API_URL = (import.meta.env.VITE_API_URL as string) || "http://localhost:8000";
+
 const api = axios.create({
-  baseURL: "http://localhost:8000/api",
+  // Автоматично додаємо префікс /api до базової адреси
+  baseURL: `${API_URL}/api`,
   headers: {
     "Content-Type": "application/json",
   },
 });
-
 
 // =========================
 // REQUEST INTERCEPTOR
