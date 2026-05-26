@@ -32,3 +32,4 @@ typing-inspection==0.4.2
 typing_extensions==4.15.0
 uvicorn==0.46.0
 asyncmy>=0.2.9
+asyncpg>=0.29.0
