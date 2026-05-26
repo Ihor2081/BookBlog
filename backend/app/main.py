@@ -24,10 +24,16 @@ app.router.redirect_slashes = False
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "https://bookblog-backend-acui.onrender.com", "https://bookblog-backend-acui.onrender.com/"],
+    allow_origins=[
+        "https://book-blog-omega.vercel.app",   # Твій фронтенд на Vercel
+        "https://book-blog-omega.vercel.app/",  # Варіант із косою рискою
+        "http://localhost:5173",                # Локальний Vite (для тестів)
+        "http://127.0.0.1:5173",
+        "*"
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], # Явно перелічи методи
+    allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Origin"],
 )
 
 # 2. Підключення маршрутизаторів
