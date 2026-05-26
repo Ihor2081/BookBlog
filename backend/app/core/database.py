@@ -15,7 +15,7 @@ engine = create_async_engine(
     connect_args={
         # Спробуємо передати як True (aiomysql сам створить базовий SSL контекст)
         # Або якщо Aiven дуже прискіпливий, використовуй: "ssl_context": ssl_context
-        "ssl": True 
+        "ssl_context": ssl_context  
     }
 )
 
