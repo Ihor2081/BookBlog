@@ -307,10 +307,7 @@ export default function App() {
                         posts[0].cover_image ||
                         "https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=1200"
                       }
-                      tags={
-                        posts[0].tags?.map(
-                          (tag) => tag.name
-                        ) || []
+                      || []
                       }
                     />
                   </div>

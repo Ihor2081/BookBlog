@@ -242,7 +242,9 @@ export function AdminDashboard({
       // Якщо теги є рядком (користувач їх редагував в інпуті), перетворюємо в масив
       const processedTags = typeof editingPost.tags === "string"
         ? editingPost.tags.split(",").map((t) => t.trim()).filter(Boolean)
-        : editingPost.tags;
+        : Array.isArray(editingPost.tags)
+           ? editingPost.tags.map((t: any) => typeof t === 'object' ? t.name : t)
+           : [];
 
       const payload = {
         title: editingPost.title.trim(),
