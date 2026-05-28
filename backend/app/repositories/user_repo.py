@@ -19,7 +19,7 @@ class UserRepository:
             username=user_data.username,
             email=user_data.email,
             hashed_password=hashed_pwd,
-            is_admin=True # За замовчуванням звичайний юзер
+            is_admin=False # За замовчуванням звичайний юзер
         )
         self.db.add(new_user)
         await self.db.commit()
