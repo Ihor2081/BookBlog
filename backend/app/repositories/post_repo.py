@@ -3,7 +3,7 @@ from sqlalchemy import desc, func, update, select, delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 
-from ..models.models import (
+from app.models.models import (
     Post,
     Like,
     Tag,
@@ -15,7 +15,42 @@ from ..models.models import (
 class PostRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
+    
+    # ====== ДОДАЙ ЦЕЙ МЕТОД ВСЕРЕДИНУ КЛАСУ ======
+    async def toggle_like(self, post_id: int, user_id: int):
+        # 1. Перевіряємо, чи існує пост
+        post_query = await self.db.execute(select(Post).where(Post.id == post_id))
+        post = post_query.scalar_one_or_none()
+        if not post:
+            return None
 
+        # 2. Шукаємо, чи є вже лайк від цього користувача
+        like_query = await self.db.execute(
+            select(Like).where(Like.post_id == post_id, Like.user_id == user_id)
+        )
+        existing_like = like_query.scalar_one_or_none()
+
+        if existing_like:
+            # Якщо лайк є — видаляємо його (Unlike)
+            await self.db.delete(existing_like)
+            if hasattr(post, 'likes_count') and post.likes_count > 0:
+                post.likes_count -= 1
+            is_liked = False
+        else:
+            # Якщо лайка немає — створюємо новий
+            new_like = Like(post_id=post_id, user_id=user_id)
+            self.db.add(new_like)
+            if hasattr(post, 'likes_count'):
+                post.likes_count += 1
+            is_liked = True
+
+        # 3. Зберігаємо зміни в базі
+        await self.db.commit()
+        
+        return {
+            "liked": is_liked,
+            "likes_count": getattr(post, 'likes_count', 0)
+        }
     # =====================================
     # BASE QUERY
     # =====================================
