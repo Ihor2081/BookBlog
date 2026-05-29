@@ -115,18 +115,26 @@ export function PostDetail({
     if (!post) return;
 
     try {
-      if (!liked) {
-        setLikes((prev) => prev + 1);
+    // 1. Шлемо реальний запит на бекенд (перевір шлях у своєму FastAPI роутері)
+    // Зазвичай це POST або PATCH на /api/posts/{id}/like
+      const response = await api.post(`/posts/${post.id}/like`);
+    
+    // 2. Якщо бекенд у відповідь повертає свіжу кількість лайків (найкраща практика):
+      if (response.data && typeof response.data.likes_count === 'number') {
+        setLikes(response.data.likes_count);
       } else {
-        setLikes((prev) => Math.max(prev - 1, 0));
+      // Якщо бекенд нічого не повертає, міняємо стейт вручну, як було:
+        if (!liked) {
+           setLikes((prev) => prev + 1);
+        } else {
+           setLikes((prev) => Math.max(prev - 1, 0));
+        }
       }
 
       setLiked(!liked);
-
-      // optional backend endpoint
-      // await api.post(`/posts/${post.id}/like`);
     } catch (error) {
       console.error("Like error:", error);
+      alert("Неможливо поставити лайк. Можливо, треба авторизуватися?");
     }
   };
 
