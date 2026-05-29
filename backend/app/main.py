@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 # імпорт маршрутизаторів
-from app.routers import posts_router, auth_router, admin_router, user_dashboard, comments_router
+from app.routers import posts_router, auth_router, admin_router, user_dashboard, comments_router, chat_router
 
 # Імпорт бази даних для ініціалізації таблиць
 from app.core.database import engine, Base
