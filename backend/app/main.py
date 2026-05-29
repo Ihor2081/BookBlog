@@ -35,6 +35,7 @@ app.include_router(auth_router.router)
 app.include_router(admin_router.router)
 app.include_router(user_dashboard.router)
 app.include_router(comments_router.router)
+app.include_router(chat_router.router)
 
 # 3. Автоматичне створення таблиць у новій базі даних при старті
 @app.on_event("startup")
