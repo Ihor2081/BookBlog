@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, KeyboardEvent } from "react";
 
 interface Message {
   sender: "user" | "admin";
@@ -18,12 +18,12 @@ export function ChatComponent({ roomId, currentRole }: ChatProps) {
   useEffect(() => {
     if (!roomId) return;
 
-    // 1. Динамічно визначаємо базовий хост залежно від середовища
+    // 1. Динамічно визначаємо базовий хост залежно від середовища (localhost чи Render)
     const wsBaseUrl = window.location.hostname === "localhost"
       ? "ws://localhost:8000"
       : "wss://bookblog-backend-acui.onrender.com";
 
-    // 2. Ініціалізуємо WebSocket з'єднання з правильним протоколом та ендпоінтом
+    // 2. Ініціалізуємо WebSocket з'єднання з префіксом /ws/chat/
     ws.current = new WebSocket(`${wsBaseUrl}/ws/chat/${roomId}`);
 
     ws.current.onopen = () => {
@@ -54,6 +54,7 @@ export function ChatComponent({ roomId, currentRole }: ChatProps) {
   }, [roomId]);
 
   const sendMessage = () => {
+    // Перевіряємо, чи сокет відкритий перед відправкою (запобігає помилкам CLOSING/CLOSED)
     if (!input.trim() || !ws.current || ws.current.readyState !== WebSocket.OPEN) return;
 
     const messageData: Message = {
@@ -65,8 +66,8 @@ export function ChatComponent({ roomId, currentRole }: ChatProps) {
     setInput("");
   };
 
-  // Функція для відправки повідомлення по натисканню Enter
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  // Функція для відправки повідомлення по натисканню Enter (виправлено типізацію)
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       sendMessage();
     }
@@ -75,6 +76,7 @@ export function ChatComponent({ roomId, currentRole }: ChatProps) {
   return (
     <div className="p-4 border rounded-xl max-w-md mx-auto bg-white shadow w-full">
       <h3 className="font-bold mb-4 text-gray-800">Чат (Кімната: {roomId})</h3>
+      
       <div className="h-64 overflow-y-auto border p-2 rounded mb-4 bg-gray-50 flex flex-col">
         {messages.map((msg, index) => (
           <div
@@ -89,6 +91,7 @@ export function ChatComponent({ roomId, currentRole }: ChatProps) {
           </div>
         ))}
       </div>
+
       <div className="flex gap-2">
         <input
           type="text"
