@@ -8,6 +8,9 @@ from fastapi import (
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.database import get_db             # Твій шлях до сесії БД
+from app.schemas.user import UserOut         # Твоя схема користувача
+
 from typing import List, Optional
 
 from ..core.database import get_db
@@ -15,7 +18,7 @@ from ..core.security import get_current_user
 
 from ..models.models import User, Post
 
-from ..repositories.post_repo import PostRepository
+from app.repositories.post_repo import PostRepository
 
 from ..schemas.post import (
     PostCreate,
@@ -302,7 +305,18 @@ async def delete_post(
 @router.post("/{post_id}/like")
 async def like_post(
     post_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserOut = Depends(get_current_user) # Захищаємо роут, щоб лайкати могли тільки авторизовані
 ):
-    return {
-        "status": "success"
-    }
+    repo = PostRepository(db)
+    
+    # Викликаємо метод репозиторію, який додасть або прибере лайк
+    result = await repo.toggle_like(post_id=post_id, user_id=current_user.id)
+    
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Post not found"
+        )
+        
+    return result # Повертає, наприклад: {"liked": True, "likes_count": 12}
