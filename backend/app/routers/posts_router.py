@@ -9,14 +9,14 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db             # Твій шлях до сесії БД
-from app.schemas.user import UserOut         # Твоя схема користувача
+from app.schemas.auth import UserOut         # Твоя схема користувача
 
 from typing import List, Optional
 
-from ..core.database import get_db
-from ..core.security import get_current_user
+from app.core.database import get_db
+from app.core.auth_deps import get_current_user
 
-from ..models.models import User, Post
+from app.models.models import User, Post
 
 from app.repositories.post_repo import PostRepository
 
