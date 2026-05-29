@@ -22,12 +22,17 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
 @router.post("/login", response_model=Token)
 async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
     repo = UserRepository(db)
+    # 1. Спочатку пробуємо знайти за email
     user = await repo.get_by_email(credentials.email)
+    
+    # 2. Якщо не знайшли, пробуємо знайти за username (додай цей метод у свій UserRepository)
+    if not user:
+        user = await repo.get_by_username(credentials.email) # credentials.email тут виступає як загальний input
     
     if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Невірний email або пароль"
+            detail="Невірний email, username або пароль"
         )
     
     # Створення токена (кладемо ID та роль в payload)
