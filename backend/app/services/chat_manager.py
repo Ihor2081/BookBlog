@@ -1,7 +1,7 @@
 import os
 import asyncio
 import json
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 # Додаємо коментар для лінтера, щоб він не підкреслював імпорти жовтим
 from redis.asyncio import Redis  # type: ignore
 
@@ -94,6 +94,10 @@ class RedisChatManager:
                 
                 # Публікуємо в Pub/Sub для миттєвої доставки
                 await self.redis.publish(f"room_{room_id}", json.dumps(data))
+        except WebSocketDisconnect:
+            # Це штатне закриття сокета браузером (код 1000 або 1005)
+            print(f"Клієнт планово відключився від кімнати {room_id}")
+        
         except Exception as e:
             print(f"WS to Redis error: {e}")
 
