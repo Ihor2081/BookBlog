@@ -18,38 +18,54 @@ export function ChatComponent({ roomId, currentRole }: ChatProps) {
   useEffect(() => {
     if (!roomId) return;
 
-    // 1. Динамічно визначаємо базовий хост залежно від середовища (localhost чи Render)
+  // 1. Обов'язково очищуємо повідомлення попередньої кімнати на екрані,
+  // щоб вони не змішувалися з повідомленнями нової кімнати.
+    setMessages([]);
+
+  // 2. Динамічно визначаємо базовий хост
     const wsBaseUrl = window.location.hostname === "localhost"
       ? "ws://localhost:8000"
       : "wss://bookblog-backend-acui.onrender.com";
 
-    // 2. Ініціалізуємо WebSocket з'єднання з префіксом /ws/chat/
-    ws.current = new WebSocket(`${wsBaseUrl}/ws/chat/${roomId}`);
+  // 3. Створюємо сокет у ЛОКАЛЬНУ змінну всередині ефекту.
+  // Це гарантує, що функція зачистки закриє саме ЦЕ з'єднання.
+    const socket = new WebSocket(`${wsBaseUrl}/ws/chat/${roomId}`);
+  
+  // Також дублюємо його в реф, якщо він потрібен вам в інших функціях (наприклад, для відправки повідомлень)
+    ws.current = socket;
 
-    ws.current.onopen = () => {
-      console.log(`WebSocket підключено до кімнати: ${roomId}`);
+    socket.onopen = () => {
+       console.log(`WebSocket підключено до кімнати: ${roomId}`);
     };
 
-    ws.current.onmessage = (event) => {
+    socket.onmessage = (event) => {
       try {
         const newMessage: Message = JSON.parse(event.data);
-        setMessages((prev) => [...prev, newMessage]);
+      // Запобігаємо дублюванню: додаємо повідомлення, тільки якщо його ще немає в стейті
+      // (актуально, якщо бекенд відправив його одночасно через історію та Pub/Sub)
+        setMessages((prev) => {
+          const isDuplicate = prev.some(
+            (msg) => msg.text === newMessage.text && msg.sender === newMessage.sender
+          );
+          return isDuplicate ? prev : [...prev, newMessage];
+        });
       } catch (error) {
         console.error("Помилка парсингу повідомлення:", error);
       }
     };
 
-    ws.current.onerror = (error) => {
+    socket.onerror = (error) => {
       console.error("Помилка WebSocket з'єднання:", error);
     };
 
-    ws.current.onclose = () => {
+    socket.onclose = () => {
       console.log(`WebSocket для кімнати ${roomId} закрито`);
     };
 
-    // 3. Очищення: старий сокет закриється автоматично при зміні roomId або розмонтуванні
+  // 4. Надійна функція очищення
     return () => {
-      ws.current?.close();
+      console.log(`Клінап: Закриваємо сокет для кімнати ${roomId}`);
+      socket.close(); // Закриваємо саме ТОЙ сокет, який був створений у цьому конкретному циклі ефекту
     };
   }, [roomId]);
 
