@@ -7,7 +7,7 @@ router = APIRouter(tags=["Chat"])
 # 1. Ендпоінт для адмін-панелі (HTTP GET)
 # Тепер шлях буде рівно таким, як шукає фронтенд: /api/admin/chat-rooms
 # (Якщо в main.py цей роутер підключається з префіксом "/api")
-@router.get("/admin/chat-rooms")
+@router.get("/api/admin/chat-rooms")
 async def get_admin_chat_rooms():
     try:
         # Отримуємо активні кімнати з менеджера чатів
