@@ -1,24 +1,29 @@
+import os
 import asyncio
 import json
-from fastapi import WebSocket
-import redis.asyncio as aioredis
+from fastapi import WebSocket, WebSocketDisconnect
+import redis.asyncio as redis  # Виправили імпорт, щоб не було жовтого підкреслення
 
 class RedisChatManager:
     def __init__(self, redis_url: str):
         # Ініціалізуємо асинхронний клієнт Redis
-        self.redis = aioredis.from_url(redis_url, decode_responses=True)
+        self.redis = redis.from_url(redis_url, decode_responses=True)
+        self.active_rooms_key = "chat_active_rooms"
 
     async def connect_room(self, websocket: WebSocket, room_id: str):
         """Підключає WebSocket до кімнати і починає трансляцію через Redis"""
         await websocket.accept()
         
+        # 1. Додаємо кімнату до списку активних у Redis
+        await self.redis.sadd(self.active_rooms_key, room_id)
+        
+        # 2. Відправляємо історію повідомлень клієнту одразу при підключенні
+        await self._send_room_history(websocket, room_id)
+
         # Створюємо об'єкт підписки (Pub/Sub) для цієї кімнати
         pubsub = self.redis.pubsub()
         await pubsub.subscribe(f"room_{room_id}")
 
-        # Створюємо два паралельні завдання: 
-        # 1. Слухати повідомлення з Redis і відправляти в цей WebSocket
-        # 2. Слухати повідомлення з цього WebSocket і публікувати в Redis
         consumer_task = asyncio.create_task(self._redis_to_websocket(pubsub, websocket))
         producer_task = asyncio.create_task(self._websocket_to_redis(websocket, room_id))
 
@@ -35,6 +40,10 @@ class RedisChatManager:
         await pubsub.unsubscribe(f"room_{room_id}")
         await websocket.close()
 
+        # 3. При відключенні перевіряємо, чи є ще хтось у кімнаті. 
+        # На безкоштовному тарифі спростимо: якщо сокет закрився — прибираємо її з активних
+        await self.redis.srem(self.active_rooms_key, room_id)
+
     async def _redis_to_websocket(self, pubsub, websocket: WebSocket):
         """Слухає Redis канал і пересилає повідомлення у браузер"""
         try:
@@ -46,18 +55,54 @@ class RedisChatManager:
             print(f"Redis to WS error: {e}")
 
     async def _websocket_to_redis(self, websocket: WebSocket, room_id: str):
-        """Слухає браузер і публікує повідомлення в Redis канал"""
+        """Слухає браузер, зберігає повідомлення в історію та публікує в Redis"""
         try:
             while True:
-                # Очікуємо JSON від фронтенду (наприклад: {"sender": "admin", "text": "Привіт!"})
                 data = await websocket.receive_json()
                 
-                # Публікуємо повідомлення в Redis (його почують усі підключені до цієї кімнати)
+                # Зберігаємо повідомлення в історію кімнати (ліст у Redis)
+                # lpush додає в початок, ltrim обрізає до останніх 50 повідомлень
+                history_key = f"room_history:{room_id}"
+                await self.redis.lpush(history_key, json.dumps(data))
+                await self.redis.ltrim(history_key, 0, 50)
+                
+                # Публікуємо в Pub/Sub для миттєвої доставки
                 await self.redis.publish(f"room_{room_id}", json.dumps(data))
         except Exception as e:
             print(f"WS to Redis error: {e}")
 
-# Ініціалізуємо менеджер (встав свій REDIS_URL, на Render він буде у змінних оточення)
-# Для локального тесту: "redis://localhost:6379"
-REDIS_URL = "redis://localhost:6379" 
+    async def _send_room_history(self, websocket: WebSocket, room_id: str):
+        """Завантажує та відправляє історію повідомлень підключеному сокету"""
+        try:
+            history_key = f"room_history:{room_id}"
+            # Запитуємо всі елементи ліста з кінця до початку (щоб зберегти хронологію)
+            history = await self.redis.lrange(history_key, 0, -1)
+            
+            # Повідомлення зберігалися через lpush, тому для правильного порядку розгортаємо список
+            for msg_str in reversed(history):
+                await websocket.send_json(json.loads(msg_str))
+        except Exception as e:
+            print(f"Error sending history: {e}")
+
+    async def get_active_rooms(self):
+        """Повертає список активних кімнат для адмінпанелі"""
+        try:
+            # Отримуємо всі ID кімнат із Redis Set
+            room_ids = await self.redis.smembers(self.active_rooms_key)
+            
+            # Перетворюємо у формат, який очікує ваш фронтенд: [{"user_id": "1", "username": "Користувач 1"}]
+            # Оскільки ми знаємо тільки ID, згенеруємо зрозуміле ім'я (або можна підтягувати з БД)
+            rooms_list = []
+            for r_id in room_ids:
+                rooms_list.append({
+                    "user_id": r_id,
+                    "username": f"Користувач {r_id}"
+                })
+            return rooms_list
+        except Exception as e:
+            print(f"Error getting active rooms: {e}")
+            return []
+
+# Ініціалізація менеджера чату з урахуванням змінних оточення Render
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379") 
 chat_manager = RedisChatManager(REDIS_URL)
