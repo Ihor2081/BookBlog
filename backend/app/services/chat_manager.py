@@ -1,13 +1,25 @@
 import os
 import asyncio
 import json
-from fastapi import WebSocket, WebSocketDisconnect
-import redis.asyncio as redis  # Виправили імпорт, щоб не було жовтого підкреслення
+from fastapi import WebSocket
+# Додаємо коментар для лінтера, щоб він не підкреслював імпорти жовтим
+from redis.asyncio import Redis  # type: ignore
 
 class RedisChatManager:
     def __init__(self, redis_url: str):
         # Ініціалізуємо асинхронний клієнт Redis
-        self.redis = redis.from_url(redis_url, decode_responses=True)
+        if redis_url.startswith("rediss://"):
+            self.redis = Redis.from_url(
+                redis_url, 
+                decode_responses=True, 
+                ssl_cert_reqs=None
+            )
+        else:
+            self.redis = Redis.from_url(
+                redis_url, 
+                decode_responses=True
+            )
+        
         self.active_rooms_key = "chat_active_rooms"
 
     async def connect_room(self, websocket: WebSocket, room_id: str):
@@ -40,8 +52,7 @@ class RedisChatManager:
         await pubsub.unsubscribe(f"room_{room_id}")
         await websocket.close()
 
-        # 3. При відключенні перевіряємо, чи є ще хтось у кімнаті. 
-        # На безкоштовному тарифі спростимо: якщо сокет закрився — прибираємо її з активних
+        # 3. При відключенні прибираємо кімнату з активних
         await self.redis.srem(self.active_rooms_key, room_id)
 
     async def _redis_to_websocket(self, pubsub, websocket: WebSocket):
@@ -61,7 +72,6 @@ class RedisChatManager:
                 data = await websocket.receive_json()
                 
                 # Зберігаємо повідомлення в історію кімнати (ліст у Redis)
-                # lpush додає в початок, ltrim обрізає до останніх 50 повідомлень
                 history_key = f"room_history:{room_id}"
                 await self.redis.lpush(history_key, json.dumps(data))
                 await self.redis.ltrim(history_key, 0, 50)
@@ -75,10 +85,9 @@ class RedisChatManager:
         """Завантажує та відправляє історію повідомлень підключеному сокету"""
         try:
             history_key = f"room_history:{room_id}"
-            # Запитуємо всі елементи ліста з кінця до початку (щоб зберегти хронологію)
             history = await self.redis.lrange(history_key, 0, -1)
             
-            # Повідомлення зберігалися через lpush, тому для правильного порядку розгортаємо список
+            # Розгортаємо список для дотримання хронологічного порядку
             for msg_str in reversed(history):
                 await websocket.send_json(json.loads(msg_str))
         except Exception as e:
@@ -90,8 +99,6 @@ class RedisChatManager:
             # Отримуємо всі ID кімнат із Redis Set
             room_ids = await self.redis.smembers(self.active_rooms_key)
             
-            # Перетворюємо у формат, який очікує ваш фронтенд: [{"user_id": "1", "username": "Користувач 1"}]
-            # Оскільки ми знаємо тільки ID, згенеруємо зрозуміле ім'я (або можна підтягувати з БД)
             rooms_list = []
             for r_id in room_ids:
                 rooms_list.append({
