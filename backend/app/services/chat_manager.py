@@ -8,16 +8,22 @@ from redis.asyncio import Redis  # type: ignore
 class RedisChatManager:
     def __init__(self, redis_url: str):
         # Ініціалізуємо асинхронний клієнт Redis
+        redis_kwargs = {
+            "decode_responses": True,
+            "socket_timeout": 300,        # 5 хвилин таймаут на читання
+            "socket_keepalive": True,      # увімкнути TCP Keep-Alive
+        }
+        
         if redis_url.startswith("rediss://"):
             self.redis = Redis.from_url(
                 redis_url, 
-                decode_responses=True, 
-                ssl_cert_reqs=None
+                ssl_cert_reqs=None,
+                **redis_kwargs
             )
         else:
             self.redis = Redis.from_url(
                 redis_url, 
-                decode_responses=True
+                **redis_kwargs
             )
         
         self.active_rooms_key = "chat_active_rooms"
