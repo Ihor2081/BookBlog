@@ -45,7 +45,7 @@ class RedisChatManager:
         consumer_task = asyncio.create_task(self._redis_to_websocket(pubsub, websocket))
         producer_task = asyncio.create_task(self._websocket_to_redis(websocket, room_id))
 
-        # Чекаємо, поки якесь із завдань не завершиться (наприклад, клієнт закрив вкладку)
+        # Чекаємо, поки якесь із завдань не завершиться
         done, pending = await asyncio.wait(
             [consumer_task, producer_task],
             return_when=asyncio.FIRST_COMPLETED
@@ -55,12 +55,22 @@ class RedisChatManager:
         for task in pending:
             task.cancel()
         
-        await pubsub.unsubscribe(f"room_{room_id}")
-        await websocket.close()
+        # Безпечно відписуємось від каналу Redis
+        try:
+            await pubsub.unsubscribe(f"room_{room_id}")
+        except Exception:
+            pass
+
+        # Безпечне закриття веб-сокета (якщо він ще відкритий)
+        try:
+            await websocket.close()
+        except RuntimeError:
+            # Якщо сокет уже закритий клієнтом, просто ігноруємо помилку
+            pass
 
         # 3. При відключенні прибираємо кімнату з активних
         await self.redis.srem(self.active_rooms_key, room_id)
-
+        
     async def _redis_to_websocket(self, pubsub, websocket: WebSocket):
         """Слухає Redis канал і пересилає повідомлення у браузер"""
         try:
