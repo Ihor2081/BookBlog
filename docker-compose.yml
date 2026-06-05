@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # Локальний сервер Redis для чату та кешування
+  redis:
+    image: redis:7-alpine
+    container_name: bookblog_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+  # Бекенд сервіс (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bookblog_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      # ⚠️ Переконайтеся, що якщо ви використовуєте змінну ${RENDER_DB_URL},
+      # ви налаштували її в GitHub Secrets або замініть її прямим посиланням на БД, якщо вона не секретна
+      - DATABASE_URL=${RENDER_DB_URL}
+    depends_on:
+      - redis
+    restart: always
+
+  # Фронтенд сервіс (React + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # ⚠️ КРИТИЧНО ДЛЯ GCP: Замініть localhost на зовнішню IP-адресу вашої VM в GCP.
+        # Наприклад: - VITE_API_URL=http://35.240.111.222:8000
+        - VITE_API_URL=http://34.141.77.179:8000
+    container_name: bookblog_frontend
+    ports:
+      - "3000:80" # Сайт буде доступний за адресою http://<IP_СЕРВЕРА_GCP>:3000
+    depends_on:
+      - backend
+    restart: always
+  
+  # Сервіс моніторингу Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: bookblog_prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090" # Відкриваємо порт назовні для перегляду метрик
+    # Секція networks default створюється автоматично, додатково прописувати не обов'язково
+
+volumes:
+  redis_data:
+  prometheus_data:

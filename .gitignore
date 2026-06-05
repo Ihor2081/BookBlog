@@ -2,16 +2,17 @@
 **/__pycache__/
 *.pyc
 .pytest_cache/
-
+__pycache__/
 # ВІРТУАЛЬНЕ ОТОЧЕННЯ ТА ЛОКАЛЬНІ ЗАВАНТАЖЕННЯ
 /backend/.venv/
 /backend/static/uploads/
-
+.venv/
 # КРИТИЧНО ВАЖЛИВО: ХОВАЄМО СЕКРЕТИ (ФАЙЛИ З ПАРОЛЯМИ)
 /backend/.env
 .env
 **/.env
 *.env
+/.env
 # ЗАЛЕЖНОСТІ ТА ЗБІРКА ФРОНТЕНДУ
 node_modules/
 frontend/node_modules/

@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s # Як часто збирати метрики (кожні 15 секунд)
+
+scrape_configs:
+  # 1. Моніторинг самого Prometheus
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # 2. Моніторинг вашого FastAPI бекенду
+  - job_name: 'fastapi-backend'
+    scrape_interval: 5s # Для тесту можна збирати частіше
+    metrics_path: '/metrics' # Ендпоінт у FastAPI, з якого зчитуються метрики
+    static_configs:
+      - targets: ['backend:8000'] # 'backend' — це назва сервісу з вашого docker-compose.yml
