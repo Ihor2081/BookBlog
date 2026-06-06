@@ -1,8 +1,8 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 
-const API_URL = (import.meta.env.VITE_API_URL as string) || "http://localhost:8000";
-
+// const API_URL = (import.meta.env.VITE_API_URL as string) || "http://localhost:8000";
+const API_URL = "http://34.141.77.179:8000"; // або без /api, залежно від вашої структури
 const api = axios.create({
   // Автоматично додаємо префікс /api до базової адреси
   baseURL: `${API_URL}/api`,
