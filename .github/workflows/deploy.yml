@@ -28,7 +28,7 @@ jobs:
           git pull origin main
           
           # 3. Перезбираємо контейнери з новим кодом у фоновому режимі
-          sudo RENDER_DB_URL="${{ secrets.RENDER_DB_URL }}" docker-compose up --build -d
+          RENDER_DB_URL="${{ secrets.RENDER_DB_URL }}" docker-compose up --build -d
           
           # 4. Очищаємо застарілі docker-образи, які більше не використовуються (щоб не забивати диск)
-          sudo docker image prune -f
+          docker image prune -f
