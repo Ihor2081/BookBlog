@@ -22,10 +22,10 @@ export function ChatComponent({ roomId, currentRole }: ChatProps) {
   // щоб вони не змішувалися з повідомленнями нової кімнати.
     setMessages([]);
 
-  // 2. Динамічно визначаємо базовий хост
-    const wsBaseUrl = window.location.hostname === "localhost"
-      ? "ws://localhost:8000"
-      : "wss://bookblog-backend-acui.onrender.com";
+  // 2. Динамічно визначаємо базовий хост для WebSocket
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+// window.location.hostname автоматично підставить 34.141.77.179 на сервері або localhost вдома
+    const wsBaseUrl = `${protocol}//${window.location.hostname}:8000`;
 
   // 3. Створюємо сокет у ЛОКАЛЬНУ змінну всередині ефекту.
   // Це гарантує, що функція зачистки закриє саме ЦЕ з'єднання.
