@@ -27,8 +27,11 @@ jobs:
           # 2. Стягуємо найсвіжіші зміни з GitHub
           git pull origin main
           
-          # 3. Перезбираємо контейнери з новим кодом у фоновому режимі
-          RENDER_DB_URL="${{ secrets.RENDER_DB_URL }}" SECRET_KEY="${{ secrets.SECRET_KEY }}" docker-compose up --build -d
+          # 3. Видаляємо старий контейнер бекенду, щоб обійти баг ContainerConfig
+          docker rm -f bookblog_backend || true
           
-          # 4. Очищаємо застарілі docker-образи, які більше не використовуються (щоб не забивати диск)
+          # 4. Запускаємо деплой старою надійною утилітою через дефіс
+          RENDER_DB_URL="${{ secrets.RENDER_DB_URL }}" SECRET_KEY="${{ secrets.SECRET_KEY }}" docker-compose up -d --build backend
+    
+          # 5. Чистимо застарілі пласти образів
           docker image prune -f
