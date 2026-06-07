@@ -1,14 +1,18 @@
+import ssl
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from .config import settings
-
+# Створюємо правильний SSL-контекст для asyncpg
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
 # Створення engine для asyncmy
 # Він автоматично підхопить SSL, якщо в параметрах Render буде вказано ?ssl=true
 engine = create_async_engine(
     settings.DATABASE_URL, 
     echo=True,
     connect_args={
-        "ssl": True  # Для asyncmy цього логічного True достатньо, щоб увімкнути безпечний режим
+        "ssl": ssl_context  # Для asyncmy цього логічного True достатньо, щоб увімкнути безпечний режим
     }
 )
 
